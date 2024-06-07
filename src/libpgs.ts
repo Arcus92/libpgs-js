@@ -1,2 +1,2 @@
-import {SubtitleRenderer} from "./subtitleRenderer";
-export {SubtitleRenderer}
+import {PgsRenderer} from "./pgsRenderer";
+export {PgsRenderer}

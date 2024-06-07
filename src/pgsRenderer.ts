@@ -2,33 +2,96 @@ import {DisplaySet} from "./pgs/displaySet";
 import {BigEndianBinaryReader} from "./utils/bigEndianBinaryReader";
 import {runLengthEncoding} from "./utils/runLengthEncoding";
 import {CompositionObject} from "./pgs/presentationCompositionSegment";
+import {PgsRendererOptions} from "./pgsRendererOptions";
 
-export class SubtitleRenderer {
+/**
+ * Renders PGS subtitle on-top of a video element.
+ */
+export class PgsRenderer {
     private readonly canvas: HTMLCanvasElement;
+    private readonly canvasOwner: boolean;
     private readonly context: CanvasRenderingContext2D;
-    private readonly video: HTMLVideoElement;
+    private readonly video?: HTMLVideoElement;
     private displaySets: DisplaySet[] = [];
     private currentIndex: number = -1;
 
-    public constructor(canvas: HTMLCanvasElement, video: HTMLVideoElement) {
-        this.canvas = canvas;
-        this.video = video;
-        this.context = canvas.getContext('2d')!;
+    public constructor(options: PgsRendererOptions) {
+        if (options.video) {
+            this.video = options.video;
+        }
 
-        this.video.addEventListener('timeupdate', (e) => this.onTimeUpdate(e));
+        if (options.canvas) {
+            this.canvas = options.canvas;
+            this.canvasOwner = false;
+        } else if (this.video) {
+            this.canvas = this.createCanvasElement();
+            this.canvasOwner = true;
+            this.video.parentElement!.appendChild(this.canvas);
+        } else {
+            throw new Error('No canvas or video element was provided!');
+        }
+
+        this.context = this.canvas.getContext('2d')!;
+
+        this.registerEvents();
+
+        // Load the initial subtitle file
+        if (options.fileUrl) {
+            this.loadFromUrlAsync(options.fileUrl).then();
+        }
     }
 
-    private onTimeUpdate(e: Event) {
-        this.renderDisplaySetAt(this.video.currentTime);
+    private createCanvasElement(): HTMLCanvasElement {
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.right = '0';
+        canvas.style.bottom = '0';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.objectFit = 'contain';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        return canvas;
     }
 
-    public async loadFromUrlAsync(url: string) {
+    private destroyCanvasElement() {
+        this.canvas.remove();
+    }
+
+    private registerEvents(): void {
+        if (this.video) {
+            this.video.addEventListener('timeupdate', this.onTimeUpdate);
+        }
+    }
+
+    private unregisterEvents(): void {
+        if (this.video) {
+            this.video.removeEventListener('timeupdate', this.onTimeUpdate);
+        }
+    }
+
+    private onTimeUpdate = (e: Event): void => {
+        if (this.video) {
+            this.renderAtTimestamp(this.video.currentTime);
+        }
+    }
+
+    /**
+     * Loads the subtitle file from the given url.
+     * @param url The url to the PGS file.
+     */
+    public async loadFromUrlAsync(url: string): Promise<void> {
         const result = await fetch(url);
         const buffer = await result.arrayBuffer();
         this.loadFromBuffer(buffer);
     }
 
-    public loadFromBuffer(buffer: ArrayBuffer) {
+    /**
+     * Loads the subtitle file from the given buffer.
+     * @param buffer The PGS data.
+     */
+    public loadFromBuffer(buffer: ArrayBuffer): void {
         this.displaySets = [];
         const reader = new BigEndianBinaryReader(new Uint8Array(buffer));
         while (reader.position < reader.length) {
@@ -38,9 +101,13 @@ export class SubtitleRenderer {
         }
     }
 
-    public renderDisplaySetAt(time: number): void {
+    /**
+     * Renders the subtitle for the given timestamp.
+     * @param time The timestamp in seconds.
+     */
+    public renderAtTimestamp(time: number): void {
         let index = -1;
-        time = time * 1000 * 90;
+        time = time * 1000 * 90; // Convert to PGS time
         for (const displaySet of this.displaySets) {
 
             if (displaySet.presentationTimestamp > time) {
@@ -51,8 +118,6 @@ export class SubtitleRenderer {
         if (this.currentIndex == index) return;
         this.currentIndex = index;
 
-        console.log('Subtitle update!');
-
         if (index < 0) return;
         const displaySet= this.displaySets[index];
         this.renderDisplaySet(displaySet);
@@ -61,6 +126,7 @@ export class SubtitleRenderer {
     private renderDisplaySet(displaySet: DisplaySet) {
         if (!displaySet.presentationComposition) return;
 
+        // Setting the width and height will also clear the canvas
         this.canvas.width = displaySet.presentationComposition.width;
         this.canvas.height = displaySet.presentationComposition.height;
 
@@ -137,5 +203,20 @@ export class SubtitleRenderer {
         });
         context.putImageData(imageData, 0, 0);
         return canvas;
+    }
+
+    /**
+     * Destroys the subtitle canvas and removes event listeners.
+     */
+    public dispose(): void {
+        this.unregisterEvents();
+
+        // Do not destroy the canvas if it was provided from an external source.
+        if (this.canvasOwner) {
+            this.destroyCanvasElement();
+        }
+
+        // Clear memory
+        this.displaySets = [];
     }
 }
