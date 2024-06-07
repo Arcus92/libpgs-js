@@ -1,0 +1,35 @@
+{
+  "name": "libpgs",
+  "version": "0.1.0",
+  "author": "David Schulte",
+  "license": "MIT",
+  "description": "Renderer for graphical subtitles (PGS) in the browser. ",
+  "keywords": [
+    "libpgs",
+    "pgs",
+    "pgssub",
+    "subtitle"
+  ],
+  "homepage": "https://github.com/Arcus92/libpgs-js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arcus92/libpgs-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Arcus92/libpgs-js/issues"
+  },
+  "main": "dist/libpgs.js",
+  "types": "dist/libpgs.d.ts",
+  "scripts": {
+    "build": "webpack -c webpack.configuration.js",
+    "clear": "rm -rf ./dist"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.6",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
