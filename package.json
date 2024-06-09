@@ -1,6 +1,6 @@
 {
   "name": "libpgs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "David Schulte",
   "license": "MIT",
   "description": "Renderer for graphical subtitles (PGS) in the browser. ",
