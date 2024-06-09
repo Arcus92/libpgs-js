@@ -1,48 +1,55 @@
+import {BinaryReader} from "./binaryReader";
+import {ArrayBinaryReader} from "./arrayBinaryReader";
+
 export class BigEndianBinaryReader {
-    private readonly buffer: Uint8Array;
+    /**
+     * The base binary reader.
+     */
+    private readonly reader: BinaryReader;
 
-    private current: number = 0;
-
-    public constructor(buffer: Uint8Array) {
-        this.buffer = buffer;
+    public constructor(buffer: BinaryReader | Uint8Array) {
+        if (buffer instanceof Uint8Array) {
+            this.reader = new ArrayBinaryReader(buffer);
+        }
+        else {
+            this.reader = buffer;
+        }
     }
 
     public get position(): number {
-        return this.current;
+        return this.reader.position;
     }
 
     public get length(): number {
-        return this.buffer.length;
+        return this.reader.length;
     }
 
     public readUInt8(): number {
-        return this.buffer[this.current++];
+        return this.reader.readByte();
     }
 
     public readUInt16(): number {
-        const b1 = this.readUInt8();
-        const b2 = this.readUInt8();
+        const b1 = this.reader.readByte();
+        const b2 = this.reader.readByte();
         return (b1 << 8) + b2;
     }
 
     public readUInt24(): number {
-        const b1 = this.readUInt8();
-        const b2 = this.readUInt8();
-        const b3 = this.readUInt8();
+        const b1 = this.reader.readByte();
+        const b2 = this.reader.readByte();
+        const b3 = this.reader.readByte();
         return (b1 << 16) + (b2 << 8) + b3;
     }
 
     public readUInt32(): number {
-        const b1 = this.readUInt8();
-        const b2 = this.readUInt8();
-        const b3 = this.readUInt8();
-        const b4 = this.readUInt8();
+        const b1 = this.reader.readByte();
+        const b2 = this.reader.readByte();
+        const b3 = this.reader.readByte();
+        const b4 = this.reader.readByte();
         return (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
     }
 
     public readBytes(count: number): Uint8Array {
-        const data = this.buffer.slice(this.current, this.current + count);
-        this.current += count;
-        return data;
+        return this.reader.readBytes(count);
     }
 }

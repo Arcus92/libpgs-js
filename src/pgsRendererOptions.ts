@@ -14,5 +14,5 @@ export interface PgsRendererOptions {
     /**
      * The initial subtitle file url to load from.
      */
-    fileUrl?: string;
+    subUrl?: string;
 }

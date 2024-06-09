@@ -1,11 +1,12 @@
 import {DisplaySet} from "./pgs/displaySet";
 import {BigEndianBinaryReader} from "./utils/bigEndianBinaryReader";
-import {runLengthEncoding} from "./utils/runLengthEncoding";
+import {RunLengthEncoding} from "./utils/runLengthEncoding";
 import {CompositionObject} from "./pgs/presentationCompositionSegment";
 import {PgsRendererOptions} from "./pgsRendererOptions";
+import {CombinedBinaryReader} from "./utils/combinedBinaryReader";
 
 /**
- * Renders PGS subtitle on-top of a video element.
+ * Renders PGS subtitle on-top of a video element using a canvas element.
  */
 export class PgsRenderer {
     private readonly canvas: HTMLCanvasElement;
@@ -31,13 +32,17 @@ export class PgsRenderer {
             throw new Error('No canvas or video element was provided!');
         }
 
-        this.context = this.canvas.getContext('2d')!;
+        const context = this.canvas.getContext('2d');
+        if (!context) {
+            throw new Error('Can not create 2d canvas context!');
+        }
+        this.context = context;
 
         this.registerEvents();
 
         // Load the initial subtitle file
-        if (options.fileUrl) {
-            this.loadFromUrlAsync(options.fileUrl).then();
+        if (options.subUrl) {
+            this.loadFromUrlAsync(options.subUrl).then();
         }
     }
 
@@ -156,7 +161,6 @@ export class PgsRenderer {
         // Collect meta data
         let width: number = 0;
         let height: number = 0;
-        let dataLength: number = 0;
         const dataChunks: Uint8Array[] = [];
         for (const ods of displaySet.objectDefinitions) {
             if (ods.id != composition.id) continue;
@@ -166,22 +170,14 @@ export class PgsRenderer {
             }
 
             if (ods.data) {
-                dataLength += ods.data.length;
                 dataChunks.push(ods.data);
             }
         }
-        if (dataLength == 0) {
+        if (dataChunks.length == 0) {
             return undefined;
         }
 
-        // Merge the data into one binary blob.
-        // TODO: Make this more memory efficient...
-        const runLengthData = new Uint8Array(dataLength);
-        let offset: number = 0;
-        for (const dataChunk of dataChunks) {
-            runLengthData.set(dataChunk, offset);
-            offset += dataChunk.length;
-        }
+        const data = new CombinedBinaryReader(dataChunks);
 
         // Building the subtitle image.
         const canvas = document.createElement('canvas');
@@ -192,7 +188,7 @@ export class PgsRenderer {
         const buffer = imageData.data;
 
         // The pixel data is run-length encoded. The value is the palette entry index.
-        runLengthEncoding(runLengthData, (idx, x, y, value) => {
+        RunLengthEncoding.decode(data, (idx, x, y, value) => {
             const col = palette?.entries[value];
             if (!col) return;
             buffer[idx * 4] = col.r;
