@@ -12,6 +12,11 @@ export interface PgsRendererOptions {
     canvas?: HTMLCanvasElement;
 
     /**
+     * The video-to-subtitle time offset in seconds.
+     */
+    timeOffset?: number;
+
+    /**
      * The initial subtitle file url to load from.
      */
     subUrl?: string;

@@ -38,6 +38,8 @@ export class PgsRenderer {
         }
         this.context = context;
 
+        this._timeOffset = options.timeOffset ?? 0;
+
         this.registerEvents();
 
         // Load the initial subtitle file
@@ -76,10 +78,29 @@ export class PgsRenderer {
         }
     }
 
-    private onTimeUpdate = (e: Event): void => {
+    private onTimeUpdate = (): void => {
         if (this.video) {
-            this.renderAtTimestamp(this.video.currentTime);
+            this.renderAtTimestamp(this.video.currentTime + this._timeOffset);
         }
+    }
+
+    private _timeOffset: number = 0;
+
+    /**
+     * Gets the video-to-subtitle time offset in seconds.
+     */
+    public get timeOffset(): number {
+        return this._timeOffset;
+    }
+
+    /**
+     * Sets the video-to-subtitle time offset and re-renders the current subtitle if needed.
+     * @param timeOffset The new time offset in seconds.
+     */
+    public set timeOffset(timeOffset: number) {
+        if (this._timeOffset === timeOffset) return;
+        this._timeOffset = timeOffset;
+        this.onTimeUpdate();
     }
 
     /**
