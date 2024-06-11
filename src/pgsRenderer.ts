@@ -6,25 +6,26 @@ import {PgsRendererOptions} from "./pgsRendererOptions";
 import {CombinedBinaryReader} from "./utils/combinedBinaryReader";
 
 /**
- * Renders PGS subtitle on-top of a video element using a canvas element.
+ * Renders PGS subtitle on-top of a video element using a canvas element. This also handles timestamp updates if a
+ * video element is provided.
  */
 export class PgsRenderer {
-    private readonly canvas: HTMLCanvasElement;
-    private readonly canvasOwner: boolean;
-    private readonly context: CanvasRenderingContext2D;
-    private readonly video?: HTMLVideoElement;
-    private displaySets: DisplaySet[] = [];
-    private currentIndex: number = -1;
 
+    /**
+     * Creates and starts a PGS subtitle render with the given option.
+     * @param options The PGS renderer options.
+     */
     public constructor(options: PgsRendererOptions) {
         if (options.video) {
             this.video = options.video;
         }
 
         if (options.canvas) {
+            // Use a canvas provided by the user
             this.canvas = options.canvas;
             this.canvasOwner = false;
         } else if (this.video) {
+            // Create a new canvas next to the video element
             this.canvas = this.createCanvasElement();
             this.canvasOwner = true;
             this.video.parentElement!.appendChild(this.canvas);
@@ -38,15 +39,20 @@ export class PgsRenderer {
         }
         this.context = context;
 
-        this._timeOffset = options.timeOffset ?? 0;
-
-        this.registerEvents();
-
-        // Load the initial subtitle file
+        // Load initial settings
+        this.$timeOffset = options.timeOffset ?? 0;
         if (options.subUrl) {
             this.loadFromUrlAsync(options.subUrl).then();
         }
+
+        this.registerVideoEvents();
     }
+
+    // region Canvas
+
+    private readonly canvas: HTMLCanvasElement;
+    private readonly canvasOwner: boolean;
+    private readonly context: CanvasRenderingContext2D;
 
     private createCanvasElement(): HTMLCanvasElement {
         const canvas = document.createElement('canvas');
@@ -66,31 +72,19 @@ export class PgsRenderer {
         this.canvas.remove();
     }
 
-    private registerEvents(): void {
-        if (this.video) {
-            this.video.addEventListener('timeupdate', this.onTimeUpdate);
-        }
-    }
+    // endregion
 
-    private unregisterEvents(): void {
-        if (this.video) {
-            this.video.removeEventListener('timeupdate', this.onTimeUpdate);
-        }
-    }
+    // region Video
 
-    private onTimeUpdate = (): void => {
-        if (this.video) {
-            this.renderAtTimestamp(this.video.currentTime + this._timeOffset);
-        }
-    }
+    private readonly video?: HTMLVideoElement;
 
-    private _timeOffset: number = 0;
+    private $timeOffset: number = 0;
 
     /**
      * Gets the video-to-subtitle time offset in seconds.
      */
     public get timeOffset(): number {
-        return this._timeOffset;
+        return this.$timeOffset;
     }
 
     /**
@@ -98,10 +92,39 @@ export class PgsRenderer {
      * @param timeOffset The new time offset in seconds.
      */
     public set timeOffset(timeOffset: number) {
-        if (this._timeOffset === timeOffset) return;
-        this._timeOffset = timeOffset;
-        this.onTimeUpdate();
+        if (this.$timeOffset === timeOffset) return;
+        this.$timeOffset = timeOffset;
+        this.renderAtVideoTimestamp();
     }
+
+    private registerVideoEvents(): void {
+        if (this.video) {
+            this.video.addEventListener('timeupdate', this.onTimeUpdate);
+        }
+    }
+
+    private unregisterVideoEvents(): void {
+        if (this.video) {
+            this.video.removeEventListener('timeupdate', this.onTimeUpdate);
+        }
+    }
+
+    private onTimeUpdate = (): void => {
+        this.renderAtVideoTimestamp();
+    }
+
+    private renderAtVideoTimestamp() {
+        if (this.video) {
+            this.renderAtTimestamp(this.video.currentTime + this.$timeOffset);
+        }
+    }
+
+    // endregion
+
+    // region Subtitle
+
+    private displaySets: DisplaySet[] = [];
+    private displaySetIndex: number = -1;
 
     /**
      * Loads the subtitle file from the given url.
@@ -125,15 +148,23 @@ export class PgsRenderer {
             displaySet.read(reader, true);
             this.displaySets.push(displaySet);
         }
+
+        this.renderAtVideoTimestamp();
     }
+
+    // endregion
+
+    // region Rendering
 
     /**
      * Renders the subtitle for the given timestamp.
      * @param time The timestamp in seconds.
      */
     public renderAtTimestamp(time: number): void {
-        let index = -1;
         time = time * 1000 * 90; // Convert to PGS time
+
+        // Find the last display set index for the given time stamp
+        let index = -1;
         for (const displaySet of this.displaySets) {
 
             if (displaySet.presentationTimestamp > time) {
@@ -141,8 +172,9 @@ export class PgsRenderer {
             }
             index++;
         }
-        if (this.currentIndex == index) return;
-        this.currentIndex = index;
+        // No need to update
+        if (this.displaySetIndex == index) return;
+        this.displaySetIndex = index;
 
         if (index < 0) return;
         const displaySet= this.displaySets[index];
@@ -152,34 +184,37 @@ export class PgsRenderer {
     private renderDisplaySet(displaySet: DisplaySet) {
         if (!displaySet.presentationComposition) return;
 
-        // Setting the width and height will also clear the canvas
+        // Setting the width and height will also clear the canvas.
         this.canvas.width = displaySet.presentationComposition.width;
         this.canvas.height = displaySet.presentationComposition.height;
 
         for (const composition of displaySet.presentationComposition.compositionObjects) {
-            this.renderComposition(displaySet, composition);
+            this.renderDisplaySetComposition(displaySet, composition);
         }
     }
 
-    private renderComposition(displaySet: DisplaySet, composition: CompositionObject): void {
+    private renderDisplaySetComposition(displaySet: DisplaySet, composition: CompositionObject): void {
         if (!displaySet.presentationComposition) return;
         let window = displaySet.windowDefinitions
-            .flatMap(w => w.windows).find(w => w.id === composition.windowId);
+            .flatMap(w => w.windows)
+            .find(w => w.id === composition.windowId);
         if (!window) return;
 
-        const pixelData = this.getPixelDataFromComposition(displaySet, composition);
+        const pixelData = this.getPixelDataFromDisplaySetComposition(displaySet, composition);
         if (pixelData) {
             this.context.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
         }
     }
 
-    private getPixelDataFromComposition(displaySet: DisplaySet, composition: CompositionObject): HTMLCanvasElement | undefined {
+    private getPixelDataFromDisplaySetComposition(displaySet: DisplaySet, composition: CompositionObject):
+        HTMLCanvasElement | undefined {
         if (!displaySet.presentationComposition) return undefined;
         let palette = displaySet.paletteDefinitions
             .find(p => p.id === displaySet.presentationComposition?.paletteId);
         if (!palette) return undefined;
 
-        // Collect meta data
+        // Multiple object definition can define a single subtitle image.
+        // However, only the first element in sequence hold the image size.
         let width: number = 0;
         let height: number = 0;
         const dataChunks: Uint8Array[] = [];
@@ -198,9 +233,11 @@ export class PgsRenderer {
             return undefined;
         }
 
+        // Using a combined reader instead of stitching the data together.
+        // This hopefully avoids a larger memory allocation.
         const data = new CombinedBinaryReader(dataChunks);
 
-        // Building the subtitle image.
+        // Building a canvas element with the subtitle image data.
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d')!;
         canvas.width = width;
@@ -208,10 +245,12 @@ export class PgsRenderer {
         const imageData = context.createImageData(width, height);
         const buffer = imageData.data;
 
-        // The pixel data is run-length encoded. The value is the palette entry index.
+        // The pixel data is run-length encoded. The decoded value is the palette entry index.
         RunLengthEncoding.decode(data, (idx, x, y, value) => {
             const col = palette?.entries[value];
             if (!col) return;
+
+            // Writing the four byte pixel data as RGBA.
             buffer[idx * 4] = col.r;
             buffer[idx * 4 + 1] = col.g;
             buffer[idx * 4 + 2] = col.b;
@@ -222,11 +261,15 @@ export class PgsRenderer {
         return canvas;
     }
 
+    // endregion
+
+    // region Dispose
+
     /**
      * Destroys the subtitle canvas and removes event listeners.
      */
     public dispose(): void {
-        this.unregisterEvents();
+        this.unregisterVideoEvents();
 
         // Do not destroy the canvas if it was provided from an external source.
         if (this.canvasOwner) {
@@ -236,4 +279,6 @@ export class PgsRenderer {
         // Clear memory
         this.displaySets = [];
     }
+
+    // endregion
 }

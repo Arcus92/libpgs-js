@@ -1,11 +1,14 @@
 import {BinaryReader} from "./binaryReader";
 import {ArrayBinaryReader} from "./arrayBinaryReader";
 
+/**
+ * A binary reader that combines multiple binary readers in one data stream.
+ */
 export class CombinedBinaryReader implements BinaryReader {
     private readonly subReaders: BinaryReader[];
-    private readonly _length: number;
+    private readonly $length: number;
 
-    private _position: number = 0;
+    private $position: number = 0;
     private subReaderIndex: number = 0;
 
     public constructor(subReaders: BinaryReader[] | Uint8Array[]) {
@@ -20,22 +23,22 @@ export class CombinedBinaryReader implements BinaryReader {
         for (const subReader of subReaders) {
             length += subReader.length;
         }
-        this._length = length;
+        this.$length = length;
     }
 
     public get position(): number {
-        return this._position;
+        return this.$position;
     }
 
     public get length(): number {
-        return this._length;
+        return this.$length;
     }
 
     public readByte(): number {
         while (this.subReaders[this.subReaderIndex].position >= this.subReaders[this.subReaderIndex].length) {
             this.subReaderIndex++;
         }
-        this._position++;
+        this.$position++;
         return this.subReaders[this.subReaderIndex].readByte();
     }
 

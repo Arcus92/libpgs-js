@@ -1,6 +1,9 @@
 import {BinaryReader} from "./binaryReader";
 import {ArrayBinaryReader} from "./arrayBinaryReader";
 
+/**
+ * Handles run length encoded images.
+ */
 export abstract class RunLengthEncoding {
     /**
      * Decodes the run length encoded image.

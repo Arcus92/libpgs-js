@@ -5,6 +5,9 @@ import {ObjectDefinitionSegment} from "./objectDefinitionSegment";
 import {WindowDefinitionSegment} from "./windowDefinitionSegment";
 import {SegmentType} from "./segmentType";
 
+/**
+ * The PGS display set holds all data for the current subtitle update at a given timestamp.
+ */
 export class DisplaySet {
     public presentationTimestamp: number = 0;
     public decodingTimestamp: number = 0;
@@ -13,6 +16,12 @@ export class DisplaySet {
     public objectDefinitions: ObjectDefinitionSegment[] = [];
     public windowDefinitions: WindowDefinitionSegment[] = [];
 
+    /**
+     * Reads a display set from the given binary reader. The current data is cleared.
+     * @param reader The binary reader to read from.
+     * @param includeHeader If true, the magic-number and timestamps are read. If false, reading starts at the first
+     * segment.
+     */
     public read(reader: BigEndianBinaryReader, includeHeader: boolean) {
 
         // Clear

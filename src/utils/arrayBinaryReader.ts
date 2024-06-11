@@ -1,16 +1,19 @@
 import {BinaryReader} from "./binaryReader";
 
+/**
+ * A binary reader based on a {@link Uint8Array}.
+ */
 export class ArrayBinaryReader implements BinaryReader {
     private readonly array: Uint8Array;
 
-    private _position: number = 0;
+    private $position: number = 0;
 
     public constructor(array: Uint8Array) {
         this.array = array;
     }
 
     public get position(): number {
-        return this._position;
+        return this.$position;
     }
 
     public get length(): number {
@@ -18,12 +21,12 @@ export class ArrayBinaryReader implements BinaryReader {
     }
 
     public readByte(): number {
-        return this.array[this._position++];
+        return this.array[this.$position++];
     }
 
     public readBytes(count: number): Uint8Array {
-        const data = this.array.slice(this._position, this._position + count);
-        this._position += count;
+        const data = this.array.slice(this.$position, this.$position + count);
+        this.$position += count;
         return data;
     }
 }
