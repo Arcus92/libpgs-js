@@ -20,4 +20,9 @@ export interface PgsRendererOptions {
      * The initial subtitle file url to load from.
      */
     subUrl?: string;
+
+    /**
+     * The url to the worker javascript file.
+     */
+    workerUrl?: string;
 }

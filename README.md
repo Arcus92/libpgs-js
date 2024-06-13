@@ -7,12 +7,13 @@ This library renders the graphical subtitles format PGS _(.sub / .sup)_ in the b
 This project is still in progress. It should be able to play 99% of Blue ray subtitles _(Yes, I made that number up)_. 
 But some rare used PGS features - like cropping - aren't implemented yet.
 
-- [x] Basic PGS rendering.
-- [x] Auto syncing to video element.
-- [x] Custom subtitle time offset.
-- [ ] Support subtitle cropping.
-  - If you know a movie or show that is using the cropping feature, please let me know!
-- [ ] Improve performance by using a WebWorker to render.
+If you know a movie or show that is using the cropping feature, please let me know!
+
+## Requirements
+
+This library requires the following web features:
+- [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas)
+- [Web Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
 
 ## Usage
 
@@ -28,8 +29,10 @@ The PGS renderer will create a default canvas element next to the video element:
 ```javascript
 const videoElement = document.getElementById('video-element');
 const pgsRenderer = new libpgs.PgsRenderer({
-    video: videoElement,
-    subUrl: './subtitle.sup'
+  // Make sure your bundler keeps this file accessible from the web!
+  workerUrl: './node_modules/libpgs/dist/libpgs.worker.js', 
+  video: videoElement,
+  subUrl: './subtitle.sup'
 });
 ```
 
@@ -63,9 +66,11 @@ It is also possible to provide a custom canvas element and position it manually:
 const videoElement = document.getElementById('video-element');
 const canvasElement = document.getElementById('canvas-element');
 const pgsRenderer = new libpgs.PgsRenderer({
-    video: videoElement,
-    canvas: canvasElement,
-    subUrl: './subtitle.sup'
+  // Make sure your bundler keeps this file accessible from the web!
+  workerUrl: './node_modules/libpgs/dist/libpgs.worker.js',
+  video: videoElement,
+  canvas: canvasElement,
+  subUrl: './subtitle.sup'
 });
 ```
 
