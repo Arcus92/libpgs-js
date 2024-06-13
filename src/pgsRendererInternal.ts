@@ -69,18 +69,33 @@ export class PgsRendererInternal {
      * @param index The index of the display set to render.
      */
     public renderAtIndex(index: number): void {
-        if (index < 0 || index >= this.displaySets.length) return;
+        // Clear the canvas on invalid indices. It is possible to seek to a position before the first subtitle while
+        // a later subtile is on screen. This subtitle must be clear, even there is no valid new subtitle data.
+        // Ignoring the render would keep the previous subtitle on screen.
+        if (index < 0 || index >= this.displaySets.length) {
+            this.clearCanvas();
+            return;
+        }
         this.renderDisplaySet(this.displaySets[index]);
+    }
+
+    private clearCanvas(): void {
+        if (!this.canvas || !this.context) return;
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     private renderDisplaySet(displaySet: DisplaySet): void {
         if (!this.canvas) return;
         if (!displaySet.presentationComposition) return;
 
-        // Setting the width and height will also clear the canvas.
-        this.canvas.width = displaySet.presentationComposition.width;
-        this.canvas.height = displaySet.presentationComposition.height;
+        // Resize the canvas if needed.
+        if (this.canvas.width != displaySet.presentationComposition.width ||
+            this.canvas.height != displaySet.presentationComposition.height) {
+            this.canvas.width = displaySet.presentationComposition.width;
+            this.canvas.height = displaySet.presentationComposition.height;
+        }
 
+        this.clearCanvas();
         for (const composition of displaySet.presentationComposition.compositionObjects) {
             this.renderDisplaySetComposition(displaySet, composition);
         }
