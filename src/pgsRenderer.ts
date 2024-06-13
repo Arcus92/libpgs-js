@@ -147,8 +147,7 @@ export class PgsRenderer {
         if (this.previousTimestampIndex == index) return;
         this.previousTimestampIndex = index;
 
-        // Tell the worker to render
-        if (index < 0) return;
+        // Tell the worker to render.
         this.worker.postMessage({
             op: 'render',
             index: index
