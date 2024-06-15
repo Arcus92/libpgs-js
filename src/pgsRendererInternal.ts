@@ -68,6 +68,26 @@ export class PgsRendererInternal {
     }
 
     /**
+     * Renders the subtitle at the given timestamp.
+     * @param time The timestamp in seconds.
+     */
+    public renderAtTimestamp(time: number): void {
+        time = time * 1000 * 90; // Convert to PGS time
+
+        // Find the last subtitle index for the given time stamp
+        let index = -1;
+        for (const updateTimestamp of this.updateTimestamps) {
+
+            if (updateTimestamp > time) {
+                break;
+            }
+            index++;
+        }
+
+        this.renderAtIndex(index);
+    }
+
+    /**
      * Renders the subtitle with the given index.
      * @param index The index of the display set to render.
      */
@@ -128,15 +148,25 @@ export class PgsRendererInternal {
             // Builds the subtitle.
             const pixelData = this.getPixelDataFromComposition(compositionObject, palette, ctxObjects);
             if (pixelData) {
-                this.context?.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
+                this.context.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
             }
         }
     }
 
+    private createCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {
+        if (typeof document !== 'undefined') {
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            return canvas;
+        } else {
+            return new OffscreenCanvas(width, height);
+        }
+    }
 
     private getPixelDataFromComposition(composition: CompositionObject, palette: PaletteDefinitionSegment,
                                         ctxObjects: ObjectDefinitionSegment[]):
-        OffscreenCanvas | undefined {
+        OffscreenCanvas | HTMLCanvasElement | undefined {
 
         // Multiple object definition can define a single subtitle image.
         // However, only the first element in sequence hold the image size.
@@ -163,8 +193,8 @@ export class PgsRendererInternal {
         const data = new CombinedBinaryReader(dataChunks);
 
         // Building a canvas element with the subtitle image data.
-        const canvas = new OffscreenCanvas(width, height);
-        const context = canvas.getContext('2d')!;
+        const canvas = this.createCanvas(width, height);
+        const context = canvas.getContext('2d')! as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
         const imageData = context.createImageData(width, height);
         const buffer = imageData.data;
 
