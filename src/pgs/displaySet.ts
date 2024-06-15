@@ -34,6 +34,9 @@ export class DisplaySet {
 
         while (true)
         {
+            let presentationTimestamp: number = 0;
+            let decodingTimestamp: number = 0;
+
             // The header is included before every segment. Even for the end segment.
             if (includeHeader)
             {
@@ -42,8 +45,8 @@ export class DisplaySet {
                     throw new Error("Invalid magic number!");
                 }
 
-                this.presentationTimestamp = reader.readUInt32();
-                this.decodingTimestamp = reader.readUInt32();
+                presentationTimestamp = reader.readUInt32();
+                decodingTimestamp = reader.readUInt32();
             }
 
             const type = reader.readUInt8();
@@ -63,6 +66,10 @@ export class DisplaySet {
                     const pcs = new PresentationCompositionSegment();
                     pcs.read(reader, size);
                     this.presentationComposition = pcs;
+
+                    // SubtitleEdit only writes the relevant timestamp to the PCS.
+                    this.presentationTimestamp = presentationTimestamp;
+                    this.decodingTimestamp = decodingTimestamp;
                     break;
                 case SegmentType.windowDefinition:
                     const wds = new WindowDefinitionSegment();
