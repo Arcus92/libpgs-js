@@ -3,6 +3,9 @@ import {BigEndianBinaryReader} from "./utils/bigEndianBinaryReader";
 import {RunLengthEncoding} from "./utils/runLengthEncoding";
 import {CompositionObject} from "./pgs/presentationCompositionSegment";
 import {CombinedBinaryReader} from "./utils/combinedBinaryReader";
+import {PaletteDefinitionSegment} from "./pgs/paletteDefinitionSegment";
+import {ObjectDefinitionSegment} from "./pgs/objectDefinitionSegment";
+import {WindowDefinition} from "./pgs/windowDefinitionSegment";
 
 /**
  * This handles the low-level PGS loading and rendering. This renderer can operate inside the web worker without being
@@ -69,23 +72,16 @@ export class PgsRendererInternal {
      * @param index The index of the display set to render.
      */
     public renderAtIndex(index: number): void {
+        if (!this.canvas || !this.context) return;
         // Clear the canvas on invalid indices. It is possible to seek to a position before the first subtitle while
         // a later subtile is on screen. This subtitle must be clear, even there is no valid new subtitle data.
         // Ignoring the render would keep the previous subtitle on screen.
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (index < 0 || index >= this.displaySets.length) {
-            this.clearCanvas();
             return;
         }
-        this.renderDisplaySet(this.displaySets[index]);
-    }
 
-    private clearCanvas(): void {
-        if (!this.canvas || !this.context) return;
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    private renderDisplaySet(displaySet: DisplaySet): void {
-        if (!this.canvas) return;
+        const displaySet = this.displaySets[index];
         if (!displaySet.presentationComposition) return;
 
         // Resize the canvas if needed.
@@ -95,39 +91,59 @@ export class PgsRendererInternal {
             this.canvas.height = displaySet.presentationComposition.height;
         }
 
-        this.clearCanvas();
-        for (const composition of displaySet.presentationComposition.compositionObjects) {
-            this.renderDisplaySetComposition(displaySet, composition);
+        // We need to collect all valid objects and palettes up to this point. PGS can update and reuse elements from
+        // previous display sets. The `compositionState` defines if the previous elements should be cleared.
+        // If it is `0` previous elements should be kept. Because the user can seek through the file, we can not store
+        // previous elements, and we should collect these elements for every new render.
+        const ctxObjects: ObjectDefinitionSegment[] = [];
+        const ctxPalettes: PaletteDefinitionSegment[] = [];
+        const ctxWindows: WindowDefinition[] = [];
+        let curIndex = index;
+        while (curIndex >= 0) {
+            // Because we are moving backwards, we would end up with the inverted array order.
+            // We'll use `unshift` to add these elements to the front of the array.
+            ctxObjects.unshift(...this.displaySets[curIndex].objectDefinitions);
+            ctxPalettes.unshift(...this.displaySets[curIndex].paletteDefinitions);
+            ctxWindows.unshift(...this.displaySets[curIndex].windowDefinitions
+                .flatMap(w => w.windows));
+
+            // Any other state that `0` frees all previous segments, so we can stop here.
+            if (this.displaySets[curIndex].presentationComposition?.compositionState !== 0) {
+                break;
+            }
+
+            curIndex--;
+        }
+
+        // Find the used palette for this composition.
+        let palette = ctxPalettes
+            .find(w => w.id === displaySet.presentationComposition?.paletteId);
+        if (!palette) return;
+
+        for (const compositionObject of displaySet.presentationComposition.compositionObjects) {
+            // Find the window to draw on.
+            let window = ctxWindows.find(w => w.id === compositionObject.windowId);
+            if (!window) continue;
+
+            // Builds the subtitle.
+            const pixelData = this.getPixelDataFromComposition(compositionObject, palette, ctxObjects);
+            if (pixelData) {
+                this.context?.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
+            }
         }
     }
 
-    private renderDisplaySetComposition(displaySet: DisplaySet, composition: CompositionObject): void {
-        if (!this.context) return;
-        if (!displaySet.presentationComposition) return;
-        let window = displaySet.windowDefinitions
-            .flatMap(w => w.windows)
-            .find(w => w.id === composition.windowId);
-        if (!window) return;
 
-        const pixelData = this.getPixelDataFromDisplaySetComposition(displaySet, composition);
-        if (pixelData) {
-            this.context.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
-        }
-    }
-
-    private getPixelDataFromDisplaySetComposition(displaySet: DisplaySet, composition: CompositionObject):
+    private getPixelDataFromComposition(composition: CompositionObject, palette: PaletteDefinitionSegment,
+                                        ctxObjects: ObjectDefinitionSegment[]):
         OffscreenCanvas | undefined {
-        if (!displaySet.presentationComposition) return undefined;
-        let palette = displaySet.paletteDefinitions
-            .find(p => p.id === displaySet.presentationComposition?.paletteId);
-        if (!palette) return undefined;
 
         // Multiple object definition can define a single subtitle image.
         // However, only the first element in sequence hold the image size.
         let width: number = 0;
         let height: number = 0;
         const dataChunks: Uint8Array[] = [];
-        for (const ods of displaySet.objectDefinitions) {
+        for (const ods of ctxObjects) {
             if (ods.id != composition.id) continue;
             if (ods.isFirstInSequence) {
                 width = ods.width;
