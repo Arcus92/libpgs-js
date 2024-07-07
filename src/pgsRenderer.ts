@@ -144,7 +144,7 @@ export class PgsRenderer {
             index++;
         }
         // Only tell the worker, if the subtitle index was changed!
-        if (this.previousTimestampIndex == index) return;
+        if (this.previousTimestampIndex === index) return;
         this.previousTimestampIndex = index;
 
         // Tell the worker to render.
