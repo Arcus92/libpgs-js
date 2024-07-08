@@ -6,6 +6,7 @@ import {CombinedBinaryReader} from "./utils/combinedBinaryReader";
 import {PaletteDefinitionSegment} from "./pgs/paletteDefinitionSegment";
 import {ObjectDefinitionSegment} from "./pgs/objectDefinitionSegment";
 import {WindowDefinition} from "./pgs/windowDefinitionSegment";
+import {Rect} from "./utils/rect";
 
 /**
  * This handles the low-level PGS loading and rendering. This renderer can operate inside the web worker without being
@@ -58,6 +59,9 @@ export class PgsRendererInternal {
     private canvas?: OffscreenCanvas | HTMLCanvasElement;
     private context?: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
 
+    // We keep track of the dirty area on the canvas. Clearing the whole canvas is slow when only a small area was used.
+    private readonly dirtyArea = new Rect();
+
     /**
      * Sets the canvas to render to.
      * @param canvas The canvas to render to.
@@ -96,7 +100,10 @@ export class PgsRendererInternal {
         // Clear the canvas on invalid indices. It is possible to seek to a position before the first subtitle while
         // a later subtile is on screen. This subtitle must be clear, even there is no valid new subtitle data.
         // Ignoring the render would keep the previous subtitle on screen.
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if (!this.dirtyArea.empty) {
+            this.context.clearRect(this.dirtyArea.x, this.dirtyArea.y, this.dirtyArea.width, this.dirtyArea.height);
+            this.dirtyArea.reset();
+        }
         if (index < 0 || index >= this.displaySets.length) {
             return;
         }
@@ -149,6 +156,10 @@ export class PgsRendererInternal {
             const pixelData = this.getPixelDataFromComposition(compositionObject, palette, ctxObjects);
             if (pixelData) {
                 this.context.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
+
+                // Mark this area as dirty.
+                this.dirtyArea.union(window.horizontalPosition, window.verticalPosition,
+                    pixelData.width, pixelData.height);
             }
         }
     }
