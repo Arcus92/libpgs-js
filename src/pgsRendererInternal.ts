@@ -207,20 +207,11 @@ export class PgsRendererInternal {
         const canvas = this.createCanvas(width, height);
         const context = canvas.getContext('2d')! as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
         const imageData = context.createImageData(width, height);
-        const buffer = imageData.data;
+        const imageBuffer = new Uint32Array(imageData.data.buffer);
 
         // The pixel data is run-length encoded. The decoded value is the palette entry index.
-        RunLengthEncoding.decode(data, (idx, x, y, value) => {
-            const col = palette?.entries[value];
-            if (!col) return;
+        RunLengthEncoding.decode(data, palette.rgba, imageBuffer);
 
-            // Writing the four byte pixel data as RGBA.
-            buffer[idx * 4] = col.r;
-            buffer[idx * 4 + 1] = col.g;
-            buffer[idx * 4 + 2] = col.b;
-            buffer[idx * 4 + 3] = col.a;
-
-        });
         context.putImageData(imageData, 0, 0);
         return canvas;
     }
