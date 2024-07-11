@@ -20,6 +20,10 @@ export class ArrayBinaryReader implements BinaryReader {
         return this.array.length;
     }
 
+    public get eof(): boolean {
+        return this.position >= this.length;
+    }
+
     public readByte(): number {
         return this.array[this.$position++];
     }

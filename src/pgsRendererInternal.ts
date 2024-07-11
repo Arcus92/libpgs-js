@@ -7,6 +7,17 @@ import {PaletteDefinitionSegment} from "./pgs/paletteDefinitionSegment";
 import {ObjectDefinitionSegment} from "./pgs/objectDefinitionSegment";
 import {WindowDefinition} from "./pgs/windowDefinitionSegment";
 import {Rect} from "./utils/rect";
+import {StreamBinaryReader} from "./utils/streamBinaryReader";
+import {BinaryReader} from "./utils/binaryReader";
+import {ArrayBinaryReader} from "./utils/arrayBinaryReader";
+
+export interface PgsLoadOptions {
+    /**
+     * Async pgs streams can return partial updates. When invoked, the `displaySets` and `updateTimestamps` are updated
+     * to the last available subtitle. There is a minimum threshold of one-second to prevent to many updates.
+     */
+    onProgress?: () => void;
+}
 
 /**
  * This handles the low-level PGS loading and rendering. This renderer can operate inside the web worker without being
@@ -29,26 +40,60 @@ export class PgsRendererInternal {
     /**
      * Loads the subtitle file from the given url.
      * @param url The url to the PGS file.
+     * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromUrlAsync(url: string): Promise<void> {
-        const result = await fetch(url);
-        const buffer = await result.arrayBuffer();
-        this.loadFromBuffer(buffer);
+    public async loadFromUrl(url: string, options?: PgsLoadOptions): Promise<void> {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+        }
+        const stream = response.body?.getReader()!;
+        const reader = new StreamBinaryReader(stream)
+
+        await this.loadFromReader(reader, options);
     }
 
     /**
      * Loads the subtitle file from the given buffer.
      * @param buffer The PGS data.
+     * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public loadFromBuffer(buffer: ArrayBuffer): void {
+    public async loadFromBuffer(buffer: ArrayBuffer, options?: PgsLoadOptions): Promise<void> {
+        await this.loadFromReader(new ArrayBinaryReader(new Uint8Array(buffer)), options);
+    }
+
+    /**
+     * Loads the subtitle file from the given buffer.
+     * @param reader The PGS data reader.
+     * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
+     */
+    public async loadFromReader(reader: BinaryReader, options?: PgsLoadOptions): Promise<void> {
         this.displaySets = [];
         this.updateTimestamps = [];
-        const reader = new BigEndianBinaryReader(new Uint8Array(buffer));
-        while (reader.position < reader.length) {
+
+        let lastUpdateTime = performance.now();
+
+        const bigEndianReader = new BigEndianBinaryReader(reader);
+        while (!reader.eof) {
             const displaySet = new DisplaySet();
-            displaySet.read(reader, true);
+            await displaySet.read(bigEndianReader, true);
             this.displaySets.push(displaySet);
             this.updateTimestamps.push(displaySet.presentationTimestamp);
+
+            // For async loading, we support frequent progress updates. Sending one update for every new display set
+            // would be too much. Instead, we use a one-second threshold.
+            if (options?.onProgress) {
+                let now = performance.now();
+                if (now > lastUpdateTime + 1000) {
+                    lastUpdateTime = now;
+                    options.onProgress();
+                }
+            }
+        }
+
+        // Call final update.
+        if (options?.onProgress) {
+            options.onProgress();
         }
     }
 
@@ -78,14 +123,18 @@ export class PgsRendererInternal {
     public renderAtTimestamp(time: number): void {
         time = time * 1000 * 90; // Convert to PGS time
 
-        // Find the last subtitle index for the given time stamp
+        // All position before and after the available timestamps are invalid (-1).
         let index = -1;
-        for (const updateTimestamp of this.updateTimestamps) {
+        if (this.updateTimestamps.length > 0 && time < this.updateTimestamps[this.updateTimestamps.length - 1]) {
 
-            if (updateTimestamp > time) {
-                break;
+            // Find the last subtitle index for the given time stamp
+            for (const updateTimestamp of this.updateTimestamps) {
+
+                if (updateTimestamp > time) {
+                    break;
+                }
+                index++;
             }
-            index++;
         }
 
         this.renderAtIndex(index);

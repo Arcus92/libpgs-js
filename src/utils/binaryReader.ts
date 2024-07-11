@@ -10,6 +10,11 @@ export interface BinaryReader {
     get length(): number;
 
     /**
+     * Gets if the binary reader has reached the end of the data.
+     */
+    get eof(): boolean;
+
+    /**
      * Reads a single byte from this buffer.
      */
     readByte(): number;

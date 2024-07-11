@@ -3,9 +3,9 @@ import {PgsRendererInternal} from "./pgsRendererInternal";
 const renderer = new PgsRendererInternal();
 
 // Inform the main process that the subtitle data was loaded and return all update timestamps
-const sendLoadedMessage = () => {
+const submitTimestamps = () => {
     postMessage({
-        op: 'loaded',
+        op: 'updateTimestamps',
         updateTimestamps: renderer.updateTimestamps
     })
 }
@@ -20,21 +20,28 @@ onmessage = (e: MessageEvent) => {
 
         case 'loadFromUrl':
             const url: string = e.data.url;
-            renderer.loadFromUrlAsync(url).then(() => {
-                sendLoadedMessage();
+            renderer.loadFromUrl(url, {
+                onProgress: () => {
+                    submitTimestamps();
+                }
+            }).then(() => {
+                submitTimestamps();
             });
             break;
 
         case 'loadFromBuffer':
             const buffer: ArrayBuffer = e.data.buffer;
-            renderer.loadFromBuffer(buffer);
+            renderer.loadFromBuffer(buffer).then(() => {
+                submitTimestamps();
+            });
 
-            sendLoadedMessage();
             break;
 
         case 'render':
             const index: number = e.data.index;
-            renderer.renderAtIndex(index);
+            requestAnimationFrame(() => {
+                renderer.renderAtIndex(index);
+            });
             break;
     }
 }

@@ -134,15 +134,20 @@ export class PgsRenderer {
     public renderAtTimestamp(time: number): void {
         time = time * 1000 * 90; // Convert to PGS time
 
-        // Find the last subtitle index for the given time stamp
+        // All position before and after the available timestamps are invalid (-1).
         let index = -1;
-        for (const updateTimestamp of this.updateTimestamps) {
+        if (this.updateTimestamps.length > 0 && time < this.updateTimestamps[this.updateTimestamps.length - 1]) {
 
-            if (updateTimestamp > time) {
-                break;
+            // Find the last subtitle index for the given time stamp
+            for (const updateTimestamp of this.updateTimestamps) {
+
+                if (updateTimestamp > time) {
+                    break;
+                }
+                index++;
             }
-            index++;
         }
+
         // Only tell the worker, if the subtitle index was changed!
         if (this.previousTimestampIndex === index) return;
         this.previousTimestampIndex = index;
@@ -163,7 +168,7 @@ export class PgsRenderer {
     private onWorkerMessage = (e: MessageEvent) => {
         switch (e.data.op) {
             // Is called once a subtitle file was loaded.
-            case 'loaded':
+            case 'updateTimestamps':
                 // Stores the update timestamps, so we don't need to push the timestamp to the worker on every tick.
                 // Instead, we push the timestamp index if it was changed.
                 this.updateTimestamps = e.data.updateTimestamps;

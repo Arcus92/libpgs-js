@@ -6,7 +6,7 @@ import {ArrayBinaryReader} from "./arrayBinaryReader";
  */
 export class CombinedBinaryReader implements BinaryReader {
     private readonly subReaders: BinaryReader[];
-    private readonly $length: number;
+    private $length: number;
 
     private $position: number = 0;
     private subReaderIndex: number = 0;
@@ -26,12 +26,30 @@ export class CombinedBinaryReader implements BinaryReader {
         this.$length = length;
     }
 
+    /**
+     * Adding another sub-reader to the collection.
+     * @param subReader The new sub-reader to add.
+     */
+    public push(subReader: BinaryReader | Uint8Array) {
+        if (subReader instanceof Uint8Array) {
+            this.subReaders.push(new ArrayBinaryReader(subReader));
+        } else {
+            this.subReaders.push(subReader);
+        }
+
+        this.$length += subReader.length;
+    }
+
     public get position(): number {
         return this.$position;
     }
 
     public get length(): number {
         return this.$length;
+    }
+
+    public get eof(): boolean {
+        return this.position >= this.length;
     }
 
     public readByte(): number {
