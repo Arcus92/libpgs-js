@@ -5,14 +5,14 @@
 import {PgsRendererInternal} from "../src/pgsRendererInternal";
 import * as fs from "node:fs";
 
-test('load and render pgs', () => {
+test('load and render pgs', async () => {
     const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
 
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d")!;
     const renderer = new PgsRendererInternal();
     renderer.setCanvas(canvas);
-    renderer.loadFromBuffer(dataSup);
+    await renderer.loadFromBuffer(dataSup);
 
     // Helper function to render and compare the image in the test directory.
     // Since we only set pixel data and don't use font rendering this should be deterministic on every machine.

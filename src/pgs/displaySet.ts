@@ -4,6 +4,7 @@ import {PaletteDefinitionSegment} from "./paletteDefinitionSegment";
 import {ObjectDefinitionSegment} from "./objectDefinitionSegment";
 import {WindowDefinitionSegment} from "./windowDefinitionSegment";
 import {SegmentType} from "./segmentType";
+import {AsyncBinaryReader} from "../utils/asyncBinaryReader";
 
 /**
  * The PGS display set holds all data for the current subtitle update at a given timestamp.
@@ -22,7 +23,7 @@ export class DisplaySet {
      * @param includeHeader If true, the magic-number and timestamps are read. If false, reading starts at the first
      * segment.
      */
-    public read(reader: BigEndianBinaryReader, includeHeader: boolean) {
+    public async read(reader: BigEndianBinaryReader, includeHeader: boolean) {
 
         // Clear
         this.presentationTimestamp = 0;
@@ -32,6 +33,12 @@ export class DisplaySet {
         this.objectDefinitions = [];
         this.windowDefinitions = [];
 
+        // Handles async readers
+        let asyncReader: AsyncBinaryReader | undefined = undefined;
+        if ('requestData' in reader.baseReader) {
+            asyncReader = reader.baseReader as AsyncBinaryReader;
+        }
+
         while (true)
         {
             let presentationTimestamp: number = 0;
@@ -40,6 +47,7 @@ export class DisplaySet {
             // The header is included before every segment. Even for the end segment.
             if (includeHeader)
             {
+                await asyncReader?.requestData(10);
                 const magicNumber = reader.readUInt16();
                 if (magicNumber != 0x5047) {
                     throw new Error("Invalid magic number!");
@@ -49,8 +57,11 @@ export class DisplaySet {
                 decodingTimestamp = reader.readUInt32();
             }
 
+            await asyncReader?.requestData(3);
             const type = reader.readUInt8();
             const size = reader.readUInt16()
+
+            await asyncReader?.requestData(size);
             switch (type) {
                 case SegmentType.paletteDefinition:
                     const pds = new PaletteDefinitionSegment();
