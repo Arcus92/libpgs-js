@@ -4,7 +4,7 @@ This library renders the graphical subtitles format PGS _(.sub / .sup)_ in the b
 
 ## Work in progress
 
-This project is still in progress. It should be able to play 99% of Blue ray subtitles _(Yes, I made that number up)_. 
+This project is still in progress. It should be able to play 99% of Blu-ray subtitles _(Yes, I made that number up)_. 
 But some rare used PGS features - like cropping - aren't implemented yet.
 
 If you know a movie or show that is using the cropping feature, please let me know!
