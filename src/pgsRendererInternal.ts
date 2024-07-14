@@ -10,6 +10,8 @@ import {Rect} from "./utils/rect";
 import {StreamBinaryReader} from "./utils/streamBinaryReader";
 import {BinaryReader} from "./utils/binaryReader";
 import {ArrayBinaryReader} from "./utils/arrayBinaryReader";
+import {CompositionRenderData, RenderData} from "./renderData";
+import {PgsRendererHelper} from "./pgsRendererHelper";
 
 export interface PgsLoadOptions {
     /**
@@ -121,22 +123,7 @@ export class PgsRendererInternal {
      * @param time The timestamp in seconds.
      */
     public renderAtTimestamp(time: number): void {
-        time = time * 1000 * 90; // Convert to PGS time
-
-        // All position before and after the available timestamps are invalid (-1).
-        let index = -1;
-        if (this.updateTimestamps.length > 0 && time < this.updateTimestamps[this.updateTimestamps.length - 1]) {
-
-            // Find the last subtitle index for the given time stamp
-            for (const updateTimestamp of this.updateTimestamps) {
-
-                if (updateTimestamp > time) {
-                    break;
-                }
-                index++;
-            }
-        }
-
+        const index = PgsRendererHelper.getIndexFromTimestamps(time, this.updateTimestamps);
         this.renderAtIndex(index);
     }
 
@@ -147,25 +134,37 @@ export class PgsRendererInternal {
     public renderAtIndex(index: number): void {
         if (!this.canvas || !this.context) return;
         // Clear the canvas on invalid indices. It is possible to seek to a position before the first subtitle while
-        // a later subtile is on screen. This subtitle must be clear, even there is no valid new subtitle data.
+        // a later subtitle is on screen. This subtitle must be clear, even there is no valid new subtitle data.
         // Ignoring the render would keep the previous subtitle on screen.
         if (!this.dirtyArea.empty) {
             this.context.clearRect(this.dirtyArea.x, this.dirtyArea.y, this.dirtyArea.width, this.dirtyArea.height);
             this.dirtyArea.reset();
         }
+
+        const renderData = this.buildRenderDataAtIndex(index);
+        if (!renderData) return;
+
+        // Resize the canvas if needed.
+        if (this.canvas.width != renderData.width ||
+            this.canvas.height != renderData.height) {
+            this.canvas.width = renderData.width;
+            this.canvas.height = renderData.height;
+        }
+
+        renderData.draw(this.context, this.dirtyArea);
+    }
+
+    /**
+     * Pre-compiles the required render data (windows and pixel data) for the frame at the given index.
+     * @param index The index of the display set to render.
+     */
+    public buildRenderDataAtIndex(index: number): RenderData | undefined {
         if (index < 0 || index >= this.displaySets.length) {
             return;
         }
 
         const displaySet = this.displaySets[index];
         if (!displaySet.presentationComposition) return;
-
-        // Resize the canvas if needed.
-        if (this.canvas.width != displaySet.presentationComposition.width ||
-            this.canvas.height != displaySet.presentationComposition.height) {
-            this.canvas.width = displaySet.presentationComposition.width;
-            this.canvas.height = displaySet.presentationComposition.height;
-        }
 
         // We need to collect all valid objects and palettes up to this point. PGS can update and reuse elements from
         // previous display sets. The `compositionState` defines if the previous elements should be cleared.
@@ -196,6 +195,7 @@ export class PgsRendererInternal {
             .find(w => w.id === displaySet.presentationComposition?.paletteId);
         if (!palette) return;
 
+        const compositionData: CompositionRenderData[] = [];
         for (const compositionObject of displaySet.presentationComposition.compositionObjects) {
             // Find the window to draw on.
             let window = ctxWindows.find(w => w.id === compositionObject.windowId);
@@ -204,13 +204,14 @@ export class PgsRendererInternal {
             // Builds the subtitle.
             const pixelData = this.getPixelDataFromComposition(compositionObject, palette, ctxObjects);
             if (pixelData) {
-                this.context.drawImage(pixelData, window.horizontalPosition, window.verticalPosition);
-
-                // Mark this area as dirty.
-                this.dirtyArea.union(window.horizontalPosition, window.verticalPosition,
-                    pixelData.width, pixelData.height);
+                compositionData.push(new CompositionRenderData(window, pixelData));
             }
         }
+
+        if (compositionData.length === 0) return;
+
+        return new RenderData(displaySet.presentationComposition.width, displaySet.presentationComposition.height,
+            compositionData);
     }
 
     private createCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {

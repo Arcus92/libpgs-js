@@ -1,4 +1,5 @@
 import {PgsRendererOptions} from "./pgsRendererOptions";
+import {PgsRendererHelper} from "./pgsRendererHelper";
 
 /**
  * Renders PGS subtitle on-top of a video element using a canvas element. This also handles timestamp updates if a
@@ -132,21 +133,7 @@ export class PgsRenderer {
      * @param time The timestamp in seconds.
      */
     public renderAtTimestamp(time: number): void {
-        time = time * 1000 * 90; // Convert to PGS time
-
-        // All position before and after the available timestamps are invalid (-1).
-        let index = -1;
-        if (this.updateTimestamps.length > 0 && time < this.updateTimestamps[this.updateTimestamps.length - 1]) {
-
-            // Find the last subtitle index for the given time stamp
-            for (const updateTimestamp of this.updateTimestamps) {
-
-                if (updateTimestamp > time) {
-                    break;
-                }
-                index++;
-            }
-        }
+        const index = PgsRendererHelper.getIndexFromTimestamps(time, this.updateTimestamps);
 
         // Only tell the worker, if the subtitle index was changed!
         if (this.previousTimestampIndex === index) return;
