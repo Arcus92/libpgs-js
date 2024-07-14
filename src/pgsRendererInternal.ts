@@ -72,6 +72,7 @@ export class PgsRendererInternal {
     public async loadFromReader(reader: BinaryReader, options?: PgsLoadOptions): Promise<void> {
         this.displaySets = [];
         this.updateTimestamps = [];
+        this.cachedRenderData = undefined;
 
         let lastUpdateTime = performance.now();
 
@@ -105,6 +106,10 @@ export class PgsRendererInternal {
 
     private canvas?: OffscreenCanvas | HTMLCanvasElement;
     private context?: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+
+    // Information about the next compiled render data. This is calculated after the current subtitle is renderd.
+    // So by the time the next subtitle change is requested, this should already be completed.
+    private cachedRenderData?: { index: number, data: RenderData | undefined };
 
     // We keep track of the dirty area on the canvas. Clearing the whole canvas is slow when only a small area was used.
     private readonly dirtyArea = new Rect();
@@ -142,16 +147,21 @@ export class PgsRendererInternal {
         }
 
         const renderData = this.buildRenderDataAtIndex(index);
-        if (!renderData) return;
+        if (renderData) {
+            // Resize the canvas if needed.
+            if (this.canvas.width != renderData.width ||
+                this.canvas.height != renderData.height) {
+                this.canvas.width = renderData.width;
+                this.canvas.height = renderData.height;
+            }
 
-        // Resize the canvas if needed.
-        if (this.canvas.width != renderData.width ||
-            this.canvas.height != renderData.height) {
-            this.canvas.width = renderData.width;
-            this.canvas.height = renderData.height;
+            renderData.draw(this.context, this.dirtyArea);
         }
 
-        renderData.draw(this.context, this.dirtyArea);
+        // Pre-calculating the next subtitle, so it is ready whenever the next subtitle change is requested.
+        const nextIndex = index + 1;
+        const nextRenderData = this.buildRenderDataAtIndex(index + 1);
+        this.cachedRenderData = { index: nextIndex, data: nextRenderData };
     }
 
     /**
@@ -159,6 +169,11 @@ export class PgsRendererInternal {
      * @param index The index of the display set to render.
      */
     public buildRenderDataAtIndex(index: number): RenderData | undefined {
+        // Check if this index was already cached.
+        if (this.cachedRenderData && this.cachedRenderData.index === index) {
+            return this.cachedRenderData.data;
+        }
+
         if (index < 0 || index >= this.displaySets.length) {
             return;
         }
