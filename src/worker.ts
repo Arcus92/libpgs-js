@@ -1,11 +1,13 @@
 import {PgsRendererInternal} from "./pgsRendererInternal";
+import {PgsRendererResult} from "./pgsRendererResult";
 
 const renderer = new PgsRendererInternal();
 
-// Inform the main process that the subtitle data was loaded and return all update timestamps
-const submitTimestamps = () => {
+// Inform the main process about the renderer status update.
+const sendProgressUpdate = (result: PgsRendererResult) => {
     postMessage({
-        op: 'updateTimestamps',
+        op: 'progress',
+        result: result,
         updateTimestamps: renderer.updateTimestamps
     })
 }
@@ -22,17 +24,17 @@ onmessage = (e: MessageEvent) => {
             const url: string = e.data.url;
             renderer.loadFromUrl(url, {
                 onProgress: () => {
-                    submitTimestamps();
+                    sendProgressUpdate(PgsRendererResult.Pending);
                 }
-            }).then(() => {
-                submitTimestamps();
+            }).then((result) => {
+                sendProgressUpdate(result);
             });
             break;
 
         case 'loadFromBuffer':
             const buffer: ArrayBuffer = e.data.buffer;
-            renderer.loadFromBuffer(buffer).then(() => {
-                submitTimestamps();
+            renderer.loadFromBuffer(buffer).then((result) => {
+                sendProgressUpdate(result);
             });
 
             break;

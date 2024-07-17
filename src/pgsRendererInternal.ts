@@ -12,6 +12,7 @@ import {BinaryReader} from "./utils/binaryReader";
 import {ArrayBinaryReader} from "./utils/arrayBinaryReader";
 import {CompositionRenderData, RenderData} from "./renderData";
 import {PgsRendererHelper} from "./pgsRendererHelper";
+import {PgsRendererResult} from "./pgsRendererResult";
 
 export interface PgsLoadOptions {
     /**
@@ -44,15 +45,16 @@ export class PgsRendererInternal {
      * @param url The url to the PGS file.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromUrl(url: string, options?: PgsLoadOptions): Promise<void> {
+    public async loadFromUrl(url: string, options?: PgsLoadOptions): Promise<PgsRendererResult> {
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status}`);
+            console.error(`[libpgs] Failed to load subtitle stream from url. HTTP Status: ${response.status}`);
+            return PgsRendererResult.ErrHttp;
         }
         const stream = response.body?.getReader()!;
         const reader = new StreamBinaryReader(stream)
 
-        await this.loadFromReader(reader, options);
+        return await this.loadFromReader(reader, options);
     }
 
     /**
@@ -60,8 +62,8 @@ export class PgsRendererInternal {
      * @param buffer The PGS data.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromBuffer(buffer: ArrayBuffer, options?: PgsLoadOptions): Promise<void> {
-        await this.loadFromReader(new ArrayBinaryReader(new Uint8Array(buffer)), options);
+    public async loadFromBuffer(buffer: ArrayBuffer, options?: PgsLoadOptions): Promise<PgsRendererResult> {
+        return await this.loadFromReader(new ArrayBinaryReader(new Uint8Array(buffer)), options);
     }
 
     /**
@@ -69,7 +71,7 @@ export class PgsRendererInternal {
      * @param reader The PGS data reader.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromReader(reader: BinaryReader, options?: PgsLoadOptions): Promise<void> {
+    public async loadFromReader(reader: BinaryReader, options?: PgsLoadOptions): Promise<PgsRendererResult> {
         this.displaySets = [];
         this.updateTimestamps = [];
         this.cachedRenderData = undefined;
@@ -79,7 +81,10 @@ export class PgsRendererInternal {
         const bigEndianReader = new BigEndianBinaryReader(reader);
         while (!reader.eof) {
             const displaySet = new DisplaySet();
-            await displaySet.read(bigEndianReader, true);
+            const result = await displaySet.read(bigEndianReader, true);
+            if (result !== PgsRendererResult.Success) {
+                return result;
+            }
             this.displaySets.push(displaySet);
             this.updateTimestamps.push(displaySet.presentationTimestamp);
 
@@ -98,6 +103,8 @@ export class PgsRendererInternal {
         if (options?.onProgress) {
             options.onProgress();
         }
+
+        return PgsRendererResult.Success;
     }
 
     // endregion
@@ -107,7 +114,7 @@ export class PgsRendererInternal {
     private canvas?: OffscreenCanvas | HTMLCanvasElement;
     private context?: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
 
-    // Information about the next compiled render data. This is calculated after the current subtitle is renderd.
+    // Information about the next compiled render data. This is calculated after the current subtitle is rendered.
     // So by the time the next subtitle change is requested, this should already be completed.
     private cachedRenderData?: { index: number, data: RenderData | undefined };
 

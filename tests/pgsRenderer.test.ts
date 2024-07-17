@@ -4,6 +4,7 @@
 
 import {PgsRendererInternal} from "../src/pgsRendererInternal";
 import * as fs from "node:fs";
+import {PgsRendererResult} from "../src/pgsRendererResult";
 
 test('load and render pgs', async () => {
     const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
@@ -12,7 +13,8 @@ test('load and render pgs', async () => {
     const context = canvas.getContext("2d")!;
     const renderer = new PgsRendererInternal();
     renderer.setCanvas(canvas);
-    await renderer.loadFromBuffer(dataSup);
+    const result = await renderer.loadFromBuffer(dataSup);
+    expect(result).toBe(PgsRendererResult.Success);
 
     // Helper function to render and compare the image in the test directory.
     // Since we only set pixel data and don't use font rendering this should be deterministic on every machine.
@@ -33,3 +35,13 @@ test('load and render pgs', async () => {
     expectImageAtTimestamp('test-1.rgba', 2.5);
     expectImageAtTimestamp('test-2.rgba', 3.5);
 });
+
+test('load non-pgs file and catch error', async () => {
+    const consoleErrorMock = jest.spyOn(console, 'error').mockImplementation();
+
+    const dataSup = fs.readFileSync(`${__dirname}/files/test.srt`);
+    const renderer = new PgsRendererInternal();
+    const result = await renderer.loadFromBuffer(dataSup);
+    expect(result).toBe(PgsRendererResult.ErrInvalidMagicNumber);
+    expect(consoleErrorMock).toHaveBeenCalled();
+})
