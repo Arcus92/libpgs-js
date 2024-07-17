@@ -1,5 +1,6 @@
 import {PgsRendererOptions} from "./pgsRendererOptions";
 import {PgsRendererHelper} from "./pgsRendererHelper";
+import {PgsRendererResult} from "./pgsRendererResult";
 
 /**
  * Renders PGS subtitle on-top of a video element using a canvas element. This also handles timestamp updates if a
@@ -154,8 +155,13 @@ export class PgsRenderer {
 
     private onWorkerMessage = (e: MessageEvent) => {
         switch (e.data.op) {
-            // Is called once a subtitle file was loaded.
-            case 'updateTimestamps':
+            // Is called for every progress update of for loading the file.
+            case 'progress':
+                const result = e.data.result as PgsRendererResult;
+                if (result !== PgsRendererResult.Success && result !== PgsRendererResult.Pending) {
+                    console.error(`[libpgs] Couldn't load subtitle stream. Worker returned: ${result}`);
+                }
+
                 // Stores the update timestamps, so we don't need to push the timestamp to the worker on every tick.
                 // Instead, we push the timestamp index if it was changed.
                 this.updateTimestamps = e.data.updateTimestamps;

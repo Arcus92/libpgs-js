@@ -1,11 +1,17 @@
 import {BinaryReader} from "./binaryReader";
 import {ArrayBinaryReader} from "./arrayBinaryReader";
+import {AsyncBinaryReader} from "./asyncBinaryReader";
 
 export class BigEndianBinaryReader {
     /**
      * The base binary reader.
      */
-    public readonly baseReader: BinaryReader;
+    private readonly baseReader: BinaryReader;
+
+    /**
+     * Set if `baseReader` is an async reader.
+     */
+    private readonly asyncReader?: AsyncBinaryReader;
 
     public constructor(buffer: BinaryReader | Uint8Array) {
         if (buffer instanceof Uint8Array) {
@@ -13,6 +19,11 @@ export class BigEndianBinaryReader {
         }
         else {
             this.baseReader = buffer;
+        }
+
+        // Handles async readers
+        if ('requestData' in this.baseReader) {
+            this.asyncReader = this.baseReader as AsyncBinaryReader;
         }
     }
 
@@ -55,5 +66,19 @@ export class BigEndianBinaryReader {
 
     public readBytes(count: number): Uint8Array {
         return this.baseReader.readBytes(count);
+    }
+
+    /**
+     * Ensures that the given number of bytes is available to read synchronously.
+     * This will wait until the data is ready to read if an underlying async stream is used.
+     * @param count The number of bytes requested.
+     * @return Returns if the requested number of bytes could be loaded.
+     */
+    public async requestData(count: number): Promise<boolean> {
+        if (this.asyncReader) {
+            return await this.asyncReader.requestData(count);
+        }
+
+        return this.baseReader.position + count <= this.baseReader.length;
     }
 }
