@@ -1,11 +1,11 @@
 import {PgsRendererOptions} from "./pgsRendererOptions";
-import {PgsRendererHelper} from "./pgsRendererHelper";
+import {PgsRendererImpl} from "./pgsRendererImpl";
+import {PgsRendererInWorkerWithOffscreenCanvas} from "./pgsRendererInWorkerWithOffscreenCanvas";
+import {PgsRendererInWorkerWithoutOffscreenCanvas} from "./pgsRendererInWorkerWithoutOffscreenCanvas";
 
 /**
  * Renders PGS subtitle on-top of a video element using a canvas element. This also handles timestamp updates if a
  * video element is provided.
- *
- * The actual rendering is done by {@link PgsRendererInternal} inside a web-worker so optimize performance.
  */
 export class PgsRenderer {
     /**
@@ -31,16 +31,23 @@ export class PgsRenderer {
             throw new Error('No canvas or video element was provided!');
         }
 
+        // Jellyfin still supports webOS 5 aka Chrome 69. There `transferControlToOffscreen` is not available.
+        // In that case we will render the canvas on the main thread.
+        // If required we could add a non-worker implementation in the future. Also, we could add an option to force a
+        // certain implementation when needed.
+        const isOffscreenCanvasSupported = this.isOffscreenCanvasSupported();
+        console.log(`isOffscreenCanvasSupported: ${isOffscreenCanvasSupported}`);
+        if (isOffscreenCanvasSupported) {
+            this.implementation = new PgsRendererInWorkerWithOffscreenCanvas(options, this.canvas);
 
-        // Init worker
-        const offscreenCanvas = this.canvas.transferControlToOffscreen();
-        const workerUrl = options.workerUrl ?? 'libpgs.worker.js';
-        this.worker = new Worker(workerUrl);
-        this.worker.onmessage = this.onWorkerMessage;
-        this.worker.postMessage({
-            op: 'init',
-            canvas: offscreenCanvas,
-        }, [offscreenCanvas])
+        } else {
+            this.implementation = new PgsRendererInWorkerWithoutOffscreenCanvas(options, this.canvas);
+        }
+
+        // Re-render the current subtitle if the timestamps were updates (e.g. through partial load).
+        this.implementation.onTimestampsUpdated = () => {
+            this.renderAtVideoTimestamp();
+        }
 
         // Load initial settings
         this.$timeOffset = options.timeOffset ?? 0;
@@ -49,6 +56,39 @@ export class PgsRenderer {
         }
 
         this.registerVideoEvents();
+    }
+
+    /**
+     * Checks if the offscreen-canvas and `transferControlToOffscreen` are supported in the current environment.
+     */
+    private isOffscreenCanvasSupported(): boolean {
+        return !!HTMLCanvasElement.prototype.transferControlToOffscreen;
+    }
+
+    private implementation: PgsRendererImpl;
+
+    /**
+     * Loads the subtitle file from the given url.
+     * @param url The url to the PGS file.
+     */
+    public loadFromUrl(url: string): void {
+        this.implementation.loadFromUrl(url);
+    }
+
+    /**
+     * Loads the subtitle file from the given buffer.
+     * @param buffer The PGS data.
+     */
+    public loadFromBuffer(buffer: ArrayBuffer): void {
+        this.implementation.loadFromBuffer(buffer);
+    }
+
+    /**
+     * Renders the subtitle for the given timestamp.
+     * @param time The timestamp in seconds.
+     */
+    public renderAtTimestamp(time: number): void {
+        this.implementation.renderAtTimestamp(time);
     }
 
     // region Video
@@ -75,15 +115,11 @@ export class PgsRenderer {
     }
 
     private registerVideoEvents(): void {
-        if (this.video) {
-            this.video.addEventListener('timeupdate', this.onTimeUpdate);
-        }
+        this.video?.addEventListener('timeupdate', this.onTimeUpdate);
     }
 
     private unregisterVideoEvents(): void {
-        if (this.video) {
-            this.video.removeEventListener('timeupdate', this.onTimeUpdate);
-        }
+        this.video?.removeEventListener('timeupdate', this.onTimeUpdate);
     }
 
     private onTimeUpdate = (): void => {
@@ -123,80 +159,13 @@ export class PgsRenderer {
 
     // endregion
 
-    // region Rendering
-
-    private updateTimestamps: number[] = [];
-    private previousTimestampIndex: number = 0;
-
-    /**
-     * Renders the subtitle for the given timestamp.
-     * @param time The timestamp in seconds.
-     */
-    public renderAtTimestamp(time: number): void {
-        const index = PgsRendererHelper.getIndexFromTimestamps(time, this.updateTimestamps);
-
-        // Only tell the worker, if the subtitle index was changed!
-        if (this.previousTimestampIndex === index) return;
-        this.previousTimestampIndex = index;
-
-        // Tell the worker to render.
-        this.worker.postMessage({
-            op: 'render',
-            index: index
-        });
-    }
-
-    // endregion
-
-    // region Worker
-
-    private readonly worker: Worker;
-
-    private onWorkerMessage = (e: MessageEvent) => {
-        switch (e.data.op) {
-            // Is called once a subtitle file was loaded.
-            case 'updateTimestamps':
-                // Stores the update timestamps, so we don't need to push the timestamp to the worker on every tick.
-                // Instead, we push the timestamp index if it was changed.
-                this.updateTimestamps = e.data.updateTimestamps;
-
-                // Skip to the current timestamp
-                this.renderAtVideoTimestamp();
-                break;
-        }
-    }
-
-    /**
-     * Loads the subtitle file from the given url.
-     * @param url The url to the PGS file.
-     */
-    public loadFromUrl(url: string): void {
-        this.worker.postMessage({
-            op: 'loadFromUrl',
-            url: url,
-        })
-    }
-
-    /**
-     * Loads the subtitle file from the given buffer.
-     * @param buffer The PGS data.
-     */
-    public loadFromBuffer(buffer: ArrayBuffer): void {
-        this.worker.postMessage({
-            op: 'loadFromBuffer',
-            buffer: buffer,
-        })
-    }
-
-    // endregion
-
     // region Dispose
 
     /**
      * Destroys the subtitle canvas and removes event listeners.
      */
     public dispose(): void {
-        this.worker.terminate();
+        this.implementation.dispose();
         this.unregisterVideoEvents();
 
         // Do not destroy the canvas if it was provided from an external source.

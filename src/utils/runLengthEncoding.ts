@@ -13,8 +13,8 @@ export abstract class RunLengthEncoding {
      * @return Returns the number of decoded pixels.
      */
     static decode(reader: BinaryReader | Uint8Array,
-        source: number[] | Uint8Array | Uint16Array | Uint32Array,
-        target: number[] | Uint8Array | Uint16Array | Uint32Array): number {
+        source: number[] | Uint8Array | Uint8ClampedArray | Uint16Array | Uint32Array,
+        target: number[] | Uint8Array | Uint8ClampedArray | Uint16Array | Uint32Array): number {
         if (reader instanceof Uint8Array) {
             reader = new ArrayBinaryReader(reader);
         }
