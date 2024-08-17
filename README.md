@@ -1,6 +1,6 @@
 # libpgs-js
 
-This library renders the graphical subtitles format PGS _(.sub / .sup)_ in the browser.
+This library renders the graphical subtitles format PGS _(.sup files)_ in the browser.
 
 ## Work in progress
 
@@ -12,8 +12,10 @@ If you know a movie or show that is using the cropping feature, please let me kn
 ## Requirements
 
 This library requires the following web features:
-- [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas)
 - [Web Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+- [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) *(optional sine 0.5.0)*
+  - If available rendering is done inside the web-worker. If `transferControlToOffscreen` isn't supported a fallback 
+  is used where the subtitles are renderer on the main thread.
 
 ## Usage
 
