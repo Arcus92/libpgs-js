@@ -7,13 +7,28 @@ import {PgsRendererHelper} from "./pgsRendererHelper";
  */
 export abstract class PgsRendererImpl {
 
-    protected updateTimestamps: number[] = [];
+    private updateTimestamps: number[] = [];
     private previousTimestampIndex: number = 0;
 
     /**
      * Is called when the timestamps were updated.
      */
     public onTimestampsUpdated?: () => void;
+
+    /**
+     * Sets the update timestamps and invokes an update event.
+     * @param updateTimestamps The new array of update timestamps.
+     */
+    protected setUpdateTimestamps(updateTimestamps: number[]): void {
+        // Stores the update timestamps, so we don't need to push the timestamp to the worker on every tick.
+        // Instead, we push the timestamp index if it was changed.
+        this.updateTimestamps = updateTimestamps;
+
+        // Notify timestamp updates.
+        if (this.onTimestampsUpdated) {
+            this.onTimestampsUpdated();
+        }
+    }
 
     /**
      * Renders the subtitle for the given timestamp.

@@ -20,7 +20,7 @@ onmessage = (e: MessageEvent) => {
         case 'init': {
             const canvas: OffscreenCanvas = e.data.canvas;
 
-            // The canvas is optional. If
+            // The canvas is optional. If provided, the web-worker can use it to render the subtitles.
             if (canvas) {
                 renderer = new Renderer(canvas);
             }
@@ -70,6 +70,7 @@ onmessage = (e: MessageEvent) => {
             // Returns the data to the main thread.
             postMessage({
                 op: 'subtitleData',
+                index: index,
                 subtitleData: subtitleData
             })
 

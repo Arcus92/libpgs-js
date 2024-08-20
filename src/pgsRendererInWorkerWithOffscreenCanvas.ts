@@ -7,23 +7,23 @@ import {PgsRendererInWorker} from "./pgsRendererInWorker";
  */
 export class PgsRendererInWorkerWithOffscreenCanvas extends PgsRendererInWorker {
 
-  public constructor(options: PgsRendererOptions, canvas: HTMLCanvasElement) {
-    super(options);
+    public constructor(options: PgsRendererOptions, canvas: HTMLCanvasElement) {
+        super(options);
 
-    // Initialize the worker with an offscreen-canvas. Rendering will occur in the worker thread.
-    const offscreenCanvas = canvas.transferControlToOffscreen();
-    this.worker.postMessage({
-      op: 'init',
-      canvas: offscreenCanvas,
-    }, [offscreenCanvas]);
-  }
+        // Initialize the worker with an offscreen-canvas. Rendering will occur in the worker thread.
+        const offscreenCanvas = canvas.transferControlToOffscreen();
+        this.worker.postMessage({
+            op: 'init',
+            canvas: offscreenCanvas,
+        }, [offscreenCanvas]);
+    }
 
 
-  protected render(index: number): void {
-    // Tells the worker to render the subtitle at this timestamp index.
-    this.worker.postMessage({
-      op: 'render',
-      index: index
-    });
-  }
+    protected render(index: number): void {
+        // Tells the worker to render the subtitle at this timestamp index.
+        this.worker.postMessage({
+            op: 'render',
+            index: index
+        });
+    }
 }
