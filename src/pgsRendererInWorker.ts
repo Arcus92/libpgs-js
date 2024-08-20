@@ -15,10 +15,6 @@ export abstract class PgsRendererInWorker extends PgsRendererImpl {
         this.worker.onmessage = this.$onWorkerMessage;
     }
 
-    /**
-     * Tells the worker to load the subtitle file from the given url.
-     * @param url The url to the PGS file.
-     */
     public loadFromUrl(url: string): void {
         this.worker.postMessage({
             op: 'loadFromUrl',
@@ -54,14 +50,7 @@ export abstract class PgsRendererInWorker extends PgsRendererImpl {
         switch (e.data.op) {
             // Is called once a subtitle file was loaded.
             case 'updateTimestamps': {
-                // Stores the update timestamps, so we don't need to push the timestamp to the worker on every tick.
-                // Instead, we push the timestamp index if it was changed.
-                this.updateTimestamps = e.data.updateTimestamps;
-
-                // Notify timestamp updates.
-                if (this.onTimestampsUpdated) {
-                    this.onTimestampsUpdated();
-                }
+                this.setUpdateTimestamps(e.data.updateTimestamps);
                 break;
             }
         }
