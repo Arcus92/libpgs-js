@@ -1,3 +1,8 @@
+// Polyfills
+import "core-js/stable/array/find";
+import "core-js/stable/promise";
+import "whatwg-fetch";
+
 import {Renderer} from "./renderer";
 import {Pgs} from "./pgs";
 
