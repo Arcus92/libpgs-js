@@ -2,6 +2,9 @@ import {PgsRendererOptions} from "./pgsRendererOptions";
 import {PgsRendererImpl} from "./pgsRendererImpl";
 import {PgsRendererInWorkerWithOffscreenCanvas} from "./pgsRendererInWorkerWithOffscreenCanvas";
 import {PgsRendererInMainThread} from "./pgsRendererInMainThread";
+import {PgsRendererInWorkerWithoutOffscreenCanvas} from "./pgsRendererInWorkerWithoutOffscreenCanvas";
+import {PgsRendererMode} from "./pgsRendererMode";
+import {BrowserSupport} from "./browserSupport";
 
 /**
  * Renders PGS subtitle on-top of a video element using a canvas element. This also handles timestamp updates if a
@@ -32,7 +35,7 @@ export class PgsRenderer {
         }
 
 
-        this.implementation = this.createPgsRendererFormPlatform(options);
+        this.implementation = this.createPgsRenderer(options);
         this.implementation.onTimestampsUpdated = () => {
             // Re-render the current subtitle if the timestamps were updates (e.g. through partial load).
             this.renderAtVideoTimestamp();
@@ -48,38 +51,19 @@ export class PgsRenderer {
     }
 
     /**
-     * Checks if the web worker is supported in the current environment.
-     */
-    private isWorkerSupported(): boolean {
-        return !!window.Worker;
-    }
-
-    /**
-     * Checks if the offscreen-canvas and `transferControlToOffscreen` are supported in the current environment.
-     */
-    private isOffscreenCanvasSupported(): boolean {
-        return !!HTMLCanvasElement.prototype.transferControlToOffscreen;
-    }
-
-    /**
-     * Performs a platform check and returns the optimal implementation for subtitle rendering.
+     * Creates the PGS renderer implementation for the given option.
      * @param options The PGS renderer options.
      */
-    private createPgsRendererFormPlatform(options: PgsRendererOptions): PgsRendererImpl {
-        // Jellyfin still supports webOS 1.2 and Tizen 2.3 with real old WebKit and Chromium version.
-        // We can run a different fallback implementation if the offscreen canvas is not supported.
-
-        const isWorkerSupported = this.isWorkerSupported();
-        const isOffscreenCanvasSupported = this.isOffscreenCanvasSupported();
-        console.log(`isWebWorkerSupported: ${isWorkerSupported}, isOffscreenCanvasSupported: ${isOffscreenCanvasSupported}`);
-
-        // FIXME: I would like to use `PgsRendererInWorkerWithoutOffscreenCanvas` if the offscreen canvas is not
-        //        available, but even the web worker thread won't start on webOS and I can't figure out why.
-        if (isWorkerSupported && isOffscreenCanvasSupported) {
-            return new PgsRendererInWorkerWithOffscreenCanvas(options, this.canvas);
-        } else {
-
-            return new PgsRendererInMainThread(options, this.canvas);
+    private createPgsRenderer(options: PgsRendererOptions): PgsRendererImpl {
+        // Use the mode provided in the settings or detect by browser.
+        const mode = options.mode ?? BrowserSupport.getRendererModeByPlatform();
+        switch (mode) {
+            case PgsRendererMode.worker:
+                return new PgsRendererInWorkerWithOffscreenCanvas(options, this.canvas);
+            case PgsRendererMode.workerWithoutOffscreenCanvas:
+                return new PgsRendererInWorkerWithoutOffscreenCanvas(options, this.canvas);
+            case PgsRendererMode.mainThread:
+                return new PgsRendererInMainThread(options, this.canvas);
         }
     }
 
