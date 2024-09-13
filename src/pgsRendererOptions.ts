@@ -1,3 +1,5 @@
+import {PgsRendererMode} from "./pgsRendererMode";
+
 export interface PgsRendererOptions {
     /**
      * The video element to sync the subtitle to.
@@ -25,4 +27,10 @@ export interface PgsRendererOptions {
      * The url to the worker javascript file.
      */
     workerUrl?: string;
+
+    /**
+     * The forced renderer mode.
+     * If not provided, the renderer checks the current browser to detect the best mode for your platform.
+     */
+    mode?: PgsRendererMode;
 }
