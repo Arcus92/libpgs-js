@@ -188,7 +188,8 @@ export class Pgs {
             // Builds the subtitle.
             const pixelData = this.getPixelDataFromComposition(compositionObject, palette, ctxObjects);
             if (pixelData) {
-                compositionData.push(new SubtitleCompositionData(window, pixelData));
+                compositionData.push(new SubtitleCompositionData(
+                  compositionObject.horizontalPosition, compositionObject.verticalPosition, window, pixelData));
             }
         }
 

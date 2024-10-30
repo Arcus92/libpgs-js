@@ -63,7 +63,7 @@ export class Renderer {
      * @param dirtyArea If given, it will extend the dirty rect to include the affected subtitle area.
      */
     private drawSubtitleCompositionData(compositionData: SubtitleCompositionData, dirtyArea?: Rect): void {
-        this.context?.putImageData(compositionData.pixelData, compositionData.window.horizontalPosition, compositionData.window.verticalPosition);
+        this.context?.putImageData(compositionData.pixelData, compositionData.x, compositionData.y);
 
         // Mark this area as dirty.
         dirtyArea?.union(compositionData.window.horizontalPosition, compositionData.window.verticalPosition,

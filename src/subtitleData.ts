@@ -31,6 +31,16 @@ export class SubtitleData {
  */
 export class SubtitleCompositionData {
     /**
+     * The x position of the image in pixels from the left edge of the canvas.
+     */
+    public readonly x: number;
+
+    /**
+     * The y position of the image in pixels from the top edge of the canvas.
+     */
+    public readonly y: number;
+
+    /**
      * The pgs window to draw on (the on-screen position).
      */
     public readonly window: WindowDefinition;
@@ -40,7 +50,9 @@ export class SubtitleCompositionData {
      */
     public readonly pixelData: ImageData;
 
-    public constructor(window: WindowDefinition, pixelData: ImageData) {
+    public constructor(x: number, y: number, window: WindowDefinition, pixelData: ImageData) {
+        this.x = x;
+        this.y = y;
         this.window = window;
         this.pixelData = pixelData;
     }
