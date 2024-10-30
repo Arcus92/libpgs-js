@@ -12,7 +12,7 @@ If you know a movie or show that is using the cropping feature, please let me kn
 ## Requirements
 
 This library requires the following web features:
-- [Web Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+- [Web Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) *(optional sine 0.6.0)*
 - [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) *(optional sine 0.5.0)*
   - If available rendering is done inside the web-worker. If `transferControlToOffscreen` isn't supported a fallback 
   is used where the subtitles are renderer on the main thread.
