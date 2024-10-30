@@ -43,6 +43,9 @@ export class PgsRenderer {
 
         // Load initial settings
         this.$timeOffset = options.timeOffset ?? 0;
+        if (options.aspectRatio) {
+            this.aspectRatio = options.aspectRatio;
+        }
         if (options.subUrl) {
             this.loadFromUrl(options.subUrl);
         }
@@ -149,7 +152,7 @@ export class PgsRenderer {
         canvas.style.right = '0';
         canvas.style.bottom = '0';
         canvas.style.pointerEvents = 'none';
-        canvas.style.objectFit = 'contain';
+        canvas.style.objectFit = this.$aspectRatio;
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         return canvas;
@@ -157,6 +160,26 @@ export class PgsRenderer {
 
     private destroyCanvasElement() {
         this.canvas.remove();
+    }
+
+    private $aspectRatio: 'contain' | 'cover' | 'fill' = 'contain';
+
+    /**
+     * Gets the aspect ratio mode of the canvas.
+     */
+    public get aspectRatio(): 'contain' | 'cover' | 'fill' {
+        return this.$aspectRatio;
+    }
+
+    /**
+     * Sets the aspect ratio mode of the canvas. This should match the `object-fit` property of the video.
+     * @param aspectMode The aspect mode.
+     */
+    public set aspectRatio(aspectMode: 'contain' | 'cover' | 'fill') {
+        this.$aspectRatio = aspectMode;
+
+        // Update the canvas
+        this.canvas.style.objectFit = this.$aspectRatio;
     }
 
     // endregion
