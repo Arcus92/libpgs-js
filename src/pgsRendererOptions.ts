@@ -19,6 +19,11 @@ export interface PgsRendererOptions {
     timeOffset?: number;
 
     /**
+     * The canvas aspect ratio mode. This should match the `object-fit` property of the video.
+     */
+    aspectRatio?: 'contain' | 'cover' | 'fill';
+
+    /**
      * The initial subtitle file url to load from.
      */
     subUrl?: string;
