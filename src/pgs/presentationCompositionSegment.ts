@@ -11,7 +11,7 @@ export class CompositionObject {
     public croppingHorizontalPosition: number = 0;
     public croppingVerticalPosition: number = 0;
     public croppingWidth: number = 0;
-    public croppingHeightPosition: number = 0;
+    public croppingHeight: number = 0;
     public get hasCropping(): boolean {
         return (this.croppedFlag & 0x80) != 0
     }
@@ -53,7 +53,7 @@ export class PresentationCompositionSegment implements Segment {
                 compositionObject.croppingHorizontalPosition = reader.readUInt16();
                 compositionObject.croppingVerticalPosition = reader.readUInt16();
                 compositionObject.croppingWidth = reader.readUInt16();
-                compositionObject.croppingHeightPosition = reader.readUInt16();
+                compositionObject.croppingHeight = reader.readUInt16();
             }
 
             this.compositionObjects.push(compositionObject);

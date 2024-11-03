@@ -1,4 +1,5 @@
 import {WindowDefinition} from "./pgs/windowDefinitionSegment";
+import {CompositionObject} from "./pgs/presentationCompositionSegment";
 
 /**
  * This class contains the compiled subtitle data for a whole frame.
@@ -31,14 +32,9 @@ export class SubtitleData {
  */
 export class SubtitleCompositionData {
     /**
-     * The x position of the image in pixels from the left edge of the canvas.
+     * The original composition object of the subtile data.
      */
-    public readonly x: number;
-
-    /**
-     * The y position of the image in pixels from the top edge of the canvas.
-     */
-    public readonly y: number;
+    public readonly compositionObject: CompositionObject;
 
     /**
      * The pgs window to draw on (the on-screen position).
@@ -50,9 +46,8 @@ export class SubtitleCompositionData {
      */
     public readonly pixelData: ImageData;
 
-    public constructor(x: number, y: number, window: WindowDefinition, pixelData: ImageData) {
-        this.x = x;
-        this.y = y;
+    public constructor(compositionObject: CompositionObject, window: WindowDefinition, pixelData: ImageData) {
+        this.compositionObject = compositionObject;
         this.window = window;
         this.pixelData = pixelData;
     }

@@ -37,8 +37,7 @@ export class Renderer {
             return;
 
         // Resize the canvas if needed.
-        if (this.canvas.width != subtitleData.width ||
-          this.canvas.height != subtitleData.height) {
+        if (this.canvas.width != subtitleData.width || this.canvas.height != subtitleData.height) {
             this.canvas.width = subtitleData.width;
             this.canvas.height = subtitleData.height;
         }
@@ -63,10 +62,19 @@ export class Renderer {
      * @param dirtyArea If given, it will extend the dirty rect to include the affected subtitle area.
      */
     private drawSubtitleCompositionData(compositionData: SubtitleCompositionData, dirtyArea?: Rect): void {
-        this.context?.putImageData(compositionData.pixelData, compositionData.x, compositionData.y);
+        const compositionObject = compositionData.compositionObject;
+        if (compositionObject.hasCropping) {
+            this.context?.putImageData(compositionData.pixelData,
+                compositionObject.horizontalPosition, compositionObject.verticalPosition,
+                compositionObject.croppingHorizontalPosition, compositionObject.croppingVerticalPosition,
+                compositionObject.croppingWidth, compositionObject.croppingHeight);
+        } else {
+            this.context?.putImageData(compositionData.pixelData,
+                compositionObject.horizontalPosition, compositionObject.verticalPosition);
+        }
 
         // Mark this area as dirty.
         dirtyArea?.union(compositionData.window.horizontalPosition, compositionData.window.verticalPosition,
-          compositionData.pixelData.width, compositionData.pixelData.height);
+            compositionData.pixelData.width, compositionData.pixelData.height);
     }
 }
