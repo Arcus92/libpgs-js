@@ -2,20 +2,10 @@
 
 This library renders the graphical subtitles format PGS _(.sup files)_ in the browser.
 
-## Work in progress
-
-This project is still in progress. It should be able to play 99% of Blu-ray subtitles _(Yes, I made that number up)_. 
-But some rare used PGS features - like cropping - aren't implemented yet.
-
-If you know a movie or show that is using the cropping feature, please let me know!
-
 ## Requirements
 
-This library requires the following web features:
-- [Web Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) *(optional sine 0.6.0)*
-- [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) *(optional sine 0.5.0)*
-  - If available rendering is done inside the web-worker. If `transferControlToOffscreen` isn't supported a fallback 
-  is used where the subtitles are renderer on the main thread.
+This library makes use of [Web Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) and [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) for faster and optimized rendering if
+available. Backwards compatibility was tested as far back as Chrome 68 and WebOS 1.2.
 
 ## Usage
 
