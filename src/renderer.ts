@@ -68,13 +68,15 @@ export class Renderer {
                 compositionObject.horizontalPosition, compositionObject.verticalPosition,
                 compositionObject.croppingHorizontalPosition, compositionObject.croppingVerticalPosition,
                 compositionObject.croppingWidth, compositionObject.croppingHeight);
+
+            dirtyArea?.union(compositionObject.horizontalPosition, compositionObject.verticalPosition,
+                compositionObject.croppingWidth, compositionObject.croppingHeight);
         } else {
             this.context?.putImageData(compositionData.pixelData,
                 compositionObject.horizontalPosition, compositionObject.verticalPosition);
-        }
 
-        // Mark this area as dirty.
-        dirtyArea?.union(compositionData.window.horizontalPosition, compositionData.window.verticalPosition,
-            compositionData.pixelData.width, compositionData.pixelData.height);
+            dirtyArea?.union(compositionObject.horizontalPosition, compositionObject.verticalPosition,
+                compositionData.pixelData.width, compositionData.pixelData.height);
+        }
     }
 }
