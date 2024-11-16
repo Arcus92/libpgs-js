@@ -1,9 +1,8 @@
-import {Rect} from "./utils/rect";
-import {SubtitleCompositionData, SubtitleData} from "./subtitleData";
+import {Rect} from "../utils/rect";
+import {SubtitleFrameElement, SubtitleFrame} from "../subtitleFrame";
 
 /**
- * This handles the low-level PGS loading and rendering. This renderer can operate inside the web worker without being
- * linked to a video element.
+ * This handles subtitle rendering to a canvas.
  */
 export class Renderer {
 
@@ -23,7 +22,7 @@ export class Renderer {
      * Renders the given subtitle data to the canvas.
      * @param subtitleData The pre-compiled subtitle data to render.
      */
-    public draw(subtitleData?: SubtitleData) {
+    public draw(subtitleData?: SubtitleFrame) {
         if (!this.canvas || !this.context) return;
         // Clear the canvas on invalid indices. It is possible to seek to a position before the first subtitle while
         // a later subtitle is on screen. This subtitle must be clear, even there is no valid new subtitle data.
@@ -50,33 +49,27 @@ export class Renderer {
      * @param subtitleData The subtitle data to draw.
      * @param dirtyArea If given, it will extend the dirty rect to include the affected subtitle area.
      */
-    private drawSubtitleData(subtitleData: SubtitleData, dirtyArea?: Rect): void {
-        for (const composition of subtitleData.compositionData) {
+    private drawSubtitleData(subtitleData: SubtitleFrame, dirtyArea?: Rect): void {
+        for (const composition of subtitleData.elements) {
             this.drawSubtitleCompositionData(composition, dirtyArea);
         }
     }
 
     /**
      * Draws this subtitle composition to the given context.
-     * @param compositionData The subtitle composition data to draw.
+     * @param element The subtitle element to draw.
      * @param dirtyArea If given, it will extend the dirty rect to include the affected subtitle area.
      */
-    private drawSubtitleCompositionData(compositionData: SubtitleCompositionData, dirtyArea?: Rect): void {
-        const compositionObject = compositionData.compositionObject;
-        if (compositionObject.hasCropping) {
-            this.context?.putImageData(compositionData.pixelData,
-                compositionObject.horizontalPosition, compositionObject.verticalPosition,
-                compositionObject.croppingHorizontalPosition, compositionObject.croppingVerticalPosition,
-                compositionObject.croppingWidth, compositionObject.croppingHeight);
+    private drawSubtitleCompositionData(element: SubtitleFrameElement, dirtyArea?: Rect): void {
+        if (element.hasCropping) {
+            this.context?.putImageData(element.pixelData, element.x, element.y,
+                element.croppingX, element.croppingY, element.croppingWidth, element.croppingHeight);
 
-            dirtyArea?.union(compositionObject.horizontalPosition, compositionObject.verticalPosition,
-                compositionObject.croppingWidth, compositionObject.croppingHeight);
+            dirtyArea?.union(element.x, element.y, element.croppingWidth, element.croppingHeight);
         } else {
-            this.context?.putImageData(compositionData.pixelData,
-                compositionObject.horizontalPosition, compositionObject.verticalPosition);
+            this.context?.putImageData(element.pixelData, element.x, element.y);
 
-            dirtyArea?.union(compositionObject.horizontalPosition, compositionObject.verticalPosition,
-                compositionData.pixelData.width, compositionData.pixelData.height);
+            dirtyArea?.union(element.x, element.y, element.pixelData.width, element.pixelData.height);
         }
     }
 }

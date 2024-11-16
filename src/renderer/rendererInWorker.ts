@@ -1,12 +1,13 @@
-import {PgsRendererImpl} from "./pgsRendererImpl";
-import {PgsRendererOptions} from "./pgsRendererOptions";
+import {RendererImpl} from "./rendererImpl";
+import {SubtitleRendererOptions} from "../subtitleRendererOptions";
+import {SubtitleSource} from "../subtitleSource";
 
 /**
- * The base implementation for a pgs renderer in side a worker.
+ * The base implementation for a subtitle renderer inside a worker.
  */
-export abstract class PgsRendererInWorker extends PgsRendererImpl {
+export abstract class RendererInWorker extends RendererImpl {
 
-    protected constructor(options: PgsRendererOptions) {
+    protected constructor(options: SubtitleRendererOptions) {
         super();
 
         // Init worker
@@ -15,17 +16,10 @@ export abstract class PgsRendererInWorker extends PgsRendererImpl {
         this.worker.onmessage = this.$onWorkerMessage;
     }
 
-    public loadFromUrl(url: string): void {
+    public load(source: SubtitleSource): void {
         this.worker.postMessage({
-            op: 'loadFromUrl',
-            url: url,
-        });
-    }
-
-    public loadFromBuffer(buffer: ArrayBuffer): void {
-        this.worker.postMessage({
-            op: 'loadFromBuffer',
-            buffer: buffer,
+            op: 'load',
+            source: source,
         });
     }
 

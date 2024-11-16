@@ -1,11 +1,12 @@
-import {PgsRendererHelper} from "./pgsRendererHelper";
+import {SubtitleDecoderHelper} from "../subtitleDecoderHelper";
+import {SubtitleSource} from "../subtitleSource";
 
 /**
- * The base for handling pgs loading and rendering. There are different ways to render a subtitle file. Modern browser
- * support a more efficient asynchrone method using a web-worker. But if this isn't working for the current browser
- * a more compatible implementation can be used.
+ * The base for handling subtitle loading and rendering. There are different ways to render a subtitle file.
+ * Modern browser support a more efficient asynchrone method using a web-worker.
+ * But if this isn't working for the current browser a more compatible implementation can be used.
  */
-export abstract class PgsRendererImpl {
+export abstract class RendererImpl {
 
     private updateTimestamps: number[] = [];
     private previousTimestampIndex: number = 0;
@@ -35,7 +36,7 @@ export abstract class PgsRendererImpl {
      * @param time The timestamp in seconds.
      */
     public renderAtTimestamp(time: number): void {
-        const index = PgsRendererHelper.getIndexFromTimestamps(time, this.updateTimestamps);
+        const index = SubtitleDecoderHelper.getIndexFromTimestamps(time, this.updateTimestamps);
         this.renderAtIndex(index);
     }
 
@@ -58,16 +59,10 @@ export abstract class PgsRendererImpl {
     protected abstract render(index: number): void;
 
     /**
-     * Loads the subtitle file from the given url.
-     * @param url The url to the PGS file.
+     * Loads the subtitle from the given source.
+     * @param source The subtitle source.
      */
-    public abstract loadFromUrl(url: string): void;
-
-    /**
-     * Loads the subtitle file from the given buffer.
-     * @param buffer The PGS data.
-     */
-    public abstract loadFromBuffer(buffer: ArrayBuffer): void;
+    public abstract load(source: SubtitleSource): void;
 
     /**
      * Disposes the renderer.

@@ -1,15 +1,15 @@
-import {PgsRendererInWorker} from "./pgsRendererInWorker";
-import {SubtitleData} from "./subtitleData";
-import {PgsRendererOptions} from "./pgsRendererOptions";
+import {RendererInWorker} from "./rendererInWorker";
+import {SubtitleFrame} from "../subtitleFrame";
+import {SubtitleRendererOptions} from "../subtitleRendererOptions";
 import {Renderer} from "./renderer";
 
 /**
  * A subtitle renderer running partially in a web-worker. It loads the subtitles in the web-worker, but rendering is
  * done on the main thread. This still requires web-workers, but skips the requirement of the offscreen-canvas.
  */
-export class PgsRendererInWorkerWithoutOffscreenCanvas extends PgsRendererInWorker {
+export class RendererInWorkerWithoutOffscreenCanvas extends RendererInWorker {
 
-    public constructor(options: PgsRendererOptions, canvas: HTMLCanvasElement) {
+    public constructor(options: SubtitleRendererOptions, canvas: HTMLCanvasElement) {
         super(options);
 
         this.renderer = new Renderer(canvas);
@@ -38,7 +38,7 @@ export class PgsRendererInWorkerWithoutOffscreenCanvas extends PgsRendererInWork
         switch (e.data.op) {
             // Is called when the requested subtitle data is returned.
             case 'subtitleData': {
-                const subtitleData = e.data.subtitleData as SubtitleData;
+                const subtitleData = e.data.subtitleData as SubtitleFrame;
                 if (this.renderer) {
                     this.renderer.draw(subtitleData);
                 }

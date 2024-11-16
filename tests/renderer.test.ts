@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 
-import {Renderer} from "../src/renderer";
+import {Renderer} from "../src/renderer/renderer";
 import * as fs from "node:fs";
-import {Pgs} from "../src/pgs";
+import {PgsDecoder} from "../src/pgs/pgsDecoder";
 
 beforeEach(() => {
     // This makes `ImageData` available in Jest.
@@ -19,7 +19,7 @@ test('load and render full pgs subtitle', async () => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d")!;
     const renderer = new Renderer(canvas);
-    const pgs = new Pgs();
+    const pgs = new PgsDecoder();
     await pgs.loadFromBuffer(dataSup);
 
     // Helper function to render and compare the image in the test directory.

@@ -1,21 +1,22 @@
-import {PgsRendererOptions} from "./pgsRendererOptions";
-import {PgsRendererImpl} from "./pgsRendererImpl";
-import {PgsRendererInWorkerWithOffscreenCanvas} from "./pgsRendererInWorkerWithOffscreenCanvas";
-import {PgsRendererInMainThread} from "./pgsRendererInMainThread";
-import {PgsRendererInWorkerWithoutOffscreenCanvas} from "./pgsRendererInWorkerWithoutOffscreenCanvas";
-import {PgsRendererMode} from "./pgsRendererMode";
+import {SubtitleRendererOptions} from "./subtitleRendererOptions";
+import {RendererImpl} from "./renderer/rendererImpl";
+import {RendererInWorkerWithOffscreenCanvas} from "./renderer/rendererInWorkerWithOffscreenCanvas";
+import {RendererInMainThread} from "./renderer/rendererInMainThread";
+import {RendererInWorkerWithoutOffscreenCanvas} from "./renderer/rendererInWorkerWithoutOffscreenCanvas";
+import {SubtitleRendererMode} from "./subtitleRendererMode";
 import {BrowserSupport} from "./browserSupport";
+import {SubtitleSource} from "./subtitleSource";
 
 /**
- * Renders PGS subtitle on-top of a video element using a canvas element. This also handles timestamp updates if a
- * video element is provided.
+ * Renders image-based subtitle on-top of a video element using a canvas element. This also handles timestamp updates
+ * if a video element is provided.
  */
-export class PgsRenderer {
+export class SubtitleRenderer {
     /**
-     * Creates and starts a PGS subtitle render with the given option.
-     * @param options The PGS renderer options.
+     * Creates and starts a subtitle render with the given option.
+     * @param options The renderer options.
      */
-    public constructor(options: PgsRendererOptions) {
+    public constructor(options: SubtitleRendererOptions) {
         if (options.video) {
             this.video = options.video;
         }
@@ -35,7 +36,7 @@ export class PgsRenderer {
         }
 
 
-        this.implementation = this.createPgsRenderer(options);
+        this.implementation = this.createRendererImplementation(options);
         this.implementation.onTimestampsUpdated = () => {
             // Re-render the current subtitle if the timestamps were updates (e.g. through partial load).
             this.renderAtVideoTimestamp();
@@ -46,46 +47,38 @@ export class PgsRenderer {
         if (options.aspectRatio) {
             this.aspectRatio = options.aspectRatio;
         }
-        if (options.subUrl) {
-            this.loadFromUrl(options.subUrl);
+        if (options.source) {
+            this.load(options.source);
         }
 
         this.registerVideoEvents();
     }
 
     /**
-     * Creates the PGS renderer implementation for the given option.
-     * @param options The PGS renderer options.
+     * Creates the renderer implementation for the given option.
+     * @param options The renderer options.
      */
-    private createPgsRenderer(options: PgsRendererOptions): PgsRendererImpl {
+    private createRendererImplementation(options: SubtitleRendererOptions): RendererImpl {
         // Use the mode provided in the settings or detect by browser.
         const mode = options.mode ?? BrowserSupport.getRendererModeByPlatform();
         switch (mode) {
-            case PgsRendererMode.worker:
-                return new PgsRendererInWorkerWithOffscreenCanvas(options, this.canvas);
-            case PgsRendererMode.workerWithoutOffscreenCanvas:
-                return new PgsRendererInWorkerWithoutOffscreenCanvas(options, this.canvas);
-            case PgsRendererMode.mainThread:
-                return new PgsRendererInMainThread(options, this.canvas);
+            case SubtitleRendererMode.worker:
+                return new RendererInWorkerWithOffscreenCanvas(options, this.canvas);
+            case SubtitleRendererMode.workerWithoutOffscreenCanvas:
+                return new RendererInWorkerWithoutOffscreenCanvas(options, this.canvas);
+            case SubtitleRendererMode.mainThread:
+                return new RendererInMainThread(options, this.canvas);
         }
     }
 
-    private implementation: PgsRendererImpl;
+    private implementation: RendererImpl;
 
     /**
-     * Loads the subtitle file from the given url.
-     * @param url The url to the PGS file.
+     * Loads the subtitle from the given source.
+     * @param source The subtitle source.
      */
-    public loadFromUrl(url: string): void {
-        this.implementation.loadFromUrl(url);
-    }
-
-    /**
-     * Loads the subtitle file from the given buffer.
-     * @param buffer The PGS data.
-     */
-    public loadFromBuffer(buffer: ArrayBuffer): void {
-        this.implementation.loadFromBuffer(buffer);
+    public load(source: SubtitleSource): void {
+        this.implementation.load(source);
     }
 
     /**

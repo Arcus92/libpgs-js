@@ -3,17 +3,19 @@ import "core-js/stable/array/find";
 import "core-js/stable/promise";
 import "whatwg-fetch";
 
-import {Renderer} from "./renderer";
-import {Pgs} from "./pgs";
+import {Renderer} from "./renderer/renderer";
+import {SubtitleLoader} from "./subtitleLoader";
+import {SubtitleDecoder} from "./subtitleDecoder";
 
-const pgs = new Pgs();
+let decoder: SubtitleDecoder | undefined = undefined;
 let renderer: Renderer | undefined = undefined;
 
 // Inform the main process that the subtitle data was loaded and return all update timestamps
 const submitTimestamps = () => {
+    if (!decoder) return;
     postMessage({
         op: 'updateTimestamps',
-        updateTimestamps: pgs.updateTimestamps
+        updateTimestamps: decoder.updateTimestamps
     })
 }
 
@@ -32,10 +34,11 @@ onmessage = (e: MessageEvent) => {
             break;
         }
 
-        // Tells the worker to load a subtitle file from an url.
-        case 'loadFromUrl': {
-            const url: string = e.data.url;
-            pgs.loadFromUrl(url, {
+        // Tells the worker to load a subtitle file from a source.
+        case 'load': {
+            const source = SubtitleLoader.deserializeSource(e.data.source);
+            decoder = SubtitleLoader.createDecoder(source.format, decoder);
+            decoder.load(source, {
                 onProgress: () => {
                     submitTimestamps();
                 }
@@ -45,32 +48,24 @@ onmessage = (e: MessageEvent) => {
             break;
         }
 
-        // Tells the worker to load a subtitle file from the given buffer.
-        case 'loadFromBuffer': {
-            const buffer: ArrayBuffer = e.data.buffer;
-            pgs.loadFromBuffer(buffer).then(() => {
-                submitTimestamps();
-            });
-
-            break;
-        }
-
         // Renders the subtitle at the given index inside the worker.
         // This is only supported if a canvas was provided to the worker.
         case 'render': {
+            if (!decoder) return;
             const index: number = e.data.index;
-            const subtitleData = pgs.getSubtitleAtIndex(index);
+            const subtitleData = decoder.getSubtitleAtIndex(index);
             requestAnimationFrame(() => {
                 renderer?.draw(subtitleData);
             });
-            pgs.cacheSubtitleAtIndex(index + 1);
+            decoder.cacheSubtitleAtIndex(index + 1);
             break;
         }
 
         // Requests to build the subtitle pixel data.
         case 'requestSubtitleData': {
+            if (!decoder) return;
             const index: number = e.data.index;
-            const subtitleData = pgs.getSubtitleAtIndex(index);
+            const subtitleData = decoder.getSubtitleAtIndex(index);
 
             // Returns the data to the main thread.
             postMessage({
@@ -79,7 +74,7 @@ onmessage = (e: MessageEvent) => {
                 subtitleData: subtitleData
             })
 
-            pgs.cacheSubtitleAtIndex(index + 1);
+            decoder.cacheSubtitleAtIndex(index + 1);
             break;
         }
     }

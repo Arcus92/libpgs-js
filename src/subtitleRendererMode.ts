@@ -1,4 +1,4 @@
-export enum PgsRendererMode {
+export enum SubtitleRendererMode {
     /**
      * A worker thread is used to load, build and render the subtitles. This requires OffscreenCanvas support.
      */

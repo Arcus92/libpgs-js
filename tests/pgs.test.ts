@@ -1,4 +1,4 @@
-import {Pgs} from "../src/pgs";
+import {PgsDecoder} from "../src/pgs/pgsDecoder";
 import * as fs from "node:fs";
 
 beforeEach(() => {
@@ -7,7 +7,7 @@ beforeEach(() => {
 });
 
 test('load pgs from file and check timestamps', async () => {
-  const pgs = new Pgs();
+  const pgs = new PgsDecoder();
   const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
   await pgs.loadFromBuffer(dataSup);
 
@@ -15,7 +15,7 @@ test('load pgs from file and check timestamps', async () => {
 });
 
 test('load pgs from file and get first subtitle', async () => {
-  const pgs = new Pgs();
+  const pgs = new PgsDecoder();
   const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
   await pgs.loadFromBuffer(dataSup);
 
@@ -25,7 +25,7 @@ test('load pgs from file and get first subtitle', async () => {
   expect(subtitle!.width).toBe(128);
   expect(subtitle!.height).toBe(64);
 
-  expect(subtitle!.compositionData.length).toBe(1);
-  expect(subtitle!.compositionData[0].window.horizontalPosition).toBe(4);
-  expect(subtitle!.compositionData[0].window.verticalPosition).toBe(32);
+  expect(subtitle!.elements.length).toBe(1);
+  expect(subtitle!.elements[0].x).toBe(4);
+  expect(subtitle!.elements[0].y).toBe(32);
 });

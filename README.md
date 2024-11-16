@@ -20,11 +20,11 @@ The PGS renderer will create a default canvas element next to the video element:
 
 ```javascript
 const videoElement = document.getElementById('video-element');
-const pgsRenderer = new libpgs.PgsRenderer({
+const subtitleRenderer = new libpgs.SubtitleRenderer({
   // Make sure your bundler keeps this file accessible from the web!
   workerUrl: './node_modules/libpgs/dist/libpgs.worker.js', 
   video: videoElement,
-  subUrl: './subtitle.sup'
+  source: new libpgs.PgsFromUrl('./subtitle.sup')
 });
 ```
 
@@ -57,12 +57,12 @@ It is also possible to provide a custom canvas element and position it manually:
 ```javascript
 const videoElement = document.getElementById('video-element');
 const canvasElement = document.getElementById('canvas-element');
-const pgsRenderer = new libpgs.PgsRenderer({
+const subtitleRenderer = new libpgs.SubtitleRenderer({
   // Make sure your bundler keeps this file accessible from the web!
   workerUrl: './node_modules/libpgs/dist/libpgs.worker.js',
   video: videoElement,
-  canvas: canvasElement,
-  subUrl: './subtitle.sup'
+  canvas: canvasElement, 
+  source: new libpgs.PgsFromUrl('./subtitle.sup')
 });
 ```
 
@@ -72,7 +72,7 @@ You can also adjust time offset between video and subtitle:
 
 ```javascript
 // Rendering the subtitle 3 seconds in advance of the video
-pgsRenderer.timeOffset = 3.0;
+subtitleRenderer.timeOffset = 3.0;
 ```
 
 ### Destroy
@@ -81,7 +81,7 @@ Make sure to dispose the renderer when leaving:
 
 ```javascript
 // Releases video events and removes the default canvas element
-pgsRenderer.dispose();
+subtitleRenderer.dispose();
 ```
 
 ## Licence

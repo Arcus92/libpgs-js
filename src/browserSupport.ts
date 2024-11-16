@@ -1,4 +1,4 @@
-import {PgsRendererMode} from "./pgsRendererMode";
+import {SubtitleRendererMode} from "./subtitleRendererMode";
 
 export class BrowserSupport {
     /**
@@ -18,7 +18,7 @@ export class BrowserSupport {
     /**
      * Returns the optimal PGS renderer mode for the current platform.
      */
-    public static getRendererModeByPlatform(): PgsRendererMode {
+    public static getRendererModeByPlatform(): SubtitleRendererMode {
         // Handle browser specific edge cases. This list is not complete!
         // If you find any more compatible issues with legacy browsers, please report them on the issue tracker.
         const userAgent = navigator.userAgent;
@@ -37,21 +37,21 @@ export class BrowserSupport {
 
         // ImageData in workers is supported since Chrome 36
         if (chromeVersion && chromeVersion < 36) {
-            return PgsRendererMode.mainThread;
+            return SubtitleRendererMode.mainThread;
         }
 
         // ImageData in workers is supported since Firefox 25
         if (firefoxVersion && firefoxVersion < 25) {
-            return PgsRendererMode.mainThread;
+            return SubtitleRendererMode.mainThread;
         }
 
         // Older version of WebOS are based on WebKit and don't support ImageData in Workers.
         if (webOS && chromeVersion === undefined) {
-            return PgsRendererMode.mainThread;
+            return SubtitleRendererMode.mainThread;
         }
         // WebOS 5 / Chrome 68 should support workers, but they do not load nor respond to messages.
         if (webOS && chromeVersion && chromeVersion <= 68) {
-            return PgsRendererMode.mainThread;
+            return SubtitleRendererMode.mainThread;
         }
 
 
@@ -60,12 +60,12 @@ export class BrowserSupport {
         const isOffscreenCanvasSupported = this.isOffscreenCanvasSupported();
         if (isWorkerSupported) {
             if (isOffscreenCanvasSupported) {
-                return PgsRendererMode.worker;
+                return SubtitleRendererMode.worker;
             } else {
-                return PgsRendererMode.workerWithoutOffscreenCanvas;
+                return SubtitleRendererMode.workerWithoutOffscreenCanvas;
             }
         } else {
-            return PgsRendererMode.mainThread;
+            return SubtitleRendererMode.mainThread;
         }
     }
 }

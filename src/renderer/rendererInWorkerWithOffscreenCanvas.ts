@@ -1,13 +1,13 @@
-import {PgsRendererOptions} from "./pgsRendererOptions";
-import {PgsRendererInWorker} from "./pgsRendererInWorker";
+import {SubtitleRendererOptions} from "../subtitleRendererOptions";
+import {RendererInWorker} from "./rendererInWorker";
 
 /**
  * A subtitle renderer running fully in a web-worker. It loads and renders the subtitles in the web-worker.
  * This requires browser support for web-workers and offscreen-canvas.
  */
-export class PgsRendererInWorkerWithOffscreenCanvas extends PgsRendererInWorker {
+export class RendererInWorkerWithOffscreenCanvas extends RendererInWorker {
 
-    public constructor(options: PgsRendererOptions, canvas: HTMLCanvasElement) {
+    public constructor(options: SubtitleRendererOptions, canvas: HTMLCanvasElement) {
         super(options);
 
         // Initialize the worker with an offscreen-canvas. Rendering will occur in the worker thread.

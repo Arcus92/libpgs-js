@@ -1,6 +1,7 @@
-import {PgsRendererMode} from "./pgsRendererMode";
+import {SubtitleRendererMode} from "./subtitleRendererMode";
+import {SubtitleSource} from "./subtitleSource";
 
-export interface PgsRendererOptions {
+export interface SubtitleRendererOptions {
     /**
      * The video element to sync the subtitle to.
      * Optional, if you provide a custom canvas and use `renderAtTimestamp` to manually update the timestamp.
@@ -24,9 +25,9 @@ export interface PgsRendererOptions {
     aspectRatio?: 'contain' | 'cover' | 'fill';
 
     /**
-     * The initial subtitle file url to load from.
+     * The initial subtitle source to load on initialization.
      */
-    subUrl?: string;
+    source?: SubtitleSource;
 
     /**
      * The url to the worker javascript file.
@@ -37,5 +38,5 @@ export interface PgsRendererOptions {
      * The forced renderer mode.
      * If not provided, the renderer checks the current browser to detect the best mode for your platform.
      */
-    mode?: PgsRendererMode;
+    mode?: SubtitleRendererMode;
 }

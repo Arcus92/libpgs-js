@@ -1,4 +1,4 @@
-export class PgsRendererHelper {
+export abstract class SubtitleDecoderHelper {
     /**
      * Returns the array index position for the previous timestamp position from the given array.
      * Returns -1 if the given time is outside the timestamp range.

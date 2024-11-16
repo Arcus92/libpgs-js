@@ -1,6 +1,6 @@
 import {Segment} from "./segment";
 import {SegmentType} from "./segmentType";
-import {BigEndianBinaryReader} from "../utils/bigEndianBinaryReader";
+import {BigEndianBinaryReader} from "../../utils/bigEndianBinaryReader";
 
 export class ObjectDefinitionSegment implements Segment {
     public id: number = 0;

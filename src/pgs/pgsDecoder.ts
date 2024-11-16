@@ -1,30 +1,32 @@
-import {BigEndianBinaryReader} from "./utils/bigEndianBinaryReader";
-import {DisplaySet} from "./pgs/displaySet";
-import {BinaryReader} from "./utils/binaryReader";
-import {ArrayBinaryReader} from "./utils/arrayBinaryReader";
-import {StreamBinaryReader} from "./utils/streamBinaryReader";
-import {SubtitleCompositionData, SubtitleData} from "./subtitleData";
-import {CompositionObject} from "./pgs/presentationCompositionSegment";
-import {PaletteDefinitionSegment} from "./pgs/paletteDefinitionSegment";
-import {ObjectDefinitionSegment} from "./pgs/objectDefinitionSegment";
-import {CombinedBinaryReader} from "./utils/combinedBinaryReader";
-import {RunLengthEncoding} from "./utils/runLengthEncoding";
-import {WindowDefinition} from "./pgs/windowDefinitionSegment";
-import {PgsRendererHelper} from "./pgsRendererHelper";
-
-export interface PgsLoadOptions {
-    /**
-     * Async pgs streams can return partial updates. When invoked, the `displaySets` and `updateTimestamps` are updated
-     * to the last available subtitle. There is a minimum threshold of one-second to prevent to many updates.
-     */
-    onProgress?: () => void;
-}
+import {BigEndianBinaryReader} from "../utils/bigEndianBinaryReader";
+import {DisplaySet} from "./data/displaySet";
+import {BinaryReader} from "../utils/binaryReader";
+import {ArrayBinaryReader} from "../utils/arrayBinaryReader";
+import {SubtitleFrameElement, SubtitleFrame} from "../subtitleFrame";
+import {CompositionObject} from "./data/presentationCompositionSegment";
+import {PaletteDefinitionSegment} from "./data/paletteDefinitionSegment";
+import {ObjectDefinitionSegment} from "./data/objectDefinitionSegment";
+import {CombinedBinaryReader} from "../utils/combinedBinaryReader";
+import {RunLengthEncoding} from "../utils/runLengthEncoding";
+import {WindowDefinition} from "./data/windowDefinitionSegment";
+import {SubtitleDecoderOptions} from "../subtitleDecoderOptions";
+import {SubtitleDecoder} from "../subtitleDecoder";
+import {SubtitleFormat} from "../subtitleFormat";
+import {SubtitleSource} from "../subtitleSource";
+import {PgsFromUrl} from "./pgsFromUrl";
+import {PgsFromBuffer} from "./pgsFromBuffer";
+import {Reader} from "../utils/reader";
 
 /**
- * The PGS subtitle data class. This can load and cache sup files from a buffer or url.
+ * The PGS subtitle decoder class. This can load and cache sup files from a buffer or url.
  * It can also build image data for a given timestamp or timestamp index.
  */
-export class Pgs {
+export class PgsDecoder extends SubtitleDecoder {
+
+    /**
+     * The decoder format.
+     */
+    public format: SubtitleFormat = SubtitleFormat.pgs;
 
     /**
      * The currently loaded display sets.
@@ -32,30 +34,32 @@ export class Pgs {
     public displaySets: DisplaySet[] = [];
 
     /**
-     * The PGS timestamps when a display set with the same index is presented.
+     * Loads the subtitle from the given source.
+     * @param source The source to load the PGS file.
+     * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public updateTimestamps: number[] = [];
+    public async load(source: SubtitleSource, options?: SubtitleDecoderOptions): Promise<void> {
+        if (source instanceof PgsFromUrl) {
+            await this.loadFromUrl(source.url, options);
+        } else if (source instanceof PgsFromBuffer) {
+            await this.loadFromBuffer(source.buffer, options);
+        } else {
+            throw new Error(`Unsupported source '${source.type}' for PgsDecoder!`);
+        }
+    }
 
     /**
      * Loads the subtitle file from the given url.
      * @param url The url to the PGS file.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromUrl(url: string, options?: PgsLoadOptions): Promise<void> {
+    public async loadFromUrl(url: string, options?: SubtitleDecoderOptions): Promise<void> {
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error: ${response.status}`);
         }
-        // The `body` and therefore readable streams are only available since Chrome 105. With this available we can utilize
-        // partial reading while downloading. As a fallback we wait for the whole file to download before reading.
-        const stream = response.body?.getReader();
-        let reader: BinaryReader;
-        if (stream) {
-            reader = new StreamBinaryReader(stream);
-        } else {
-            const buffer = await response.arrayBuffer();
-            reader = new ArrayBinaryReader(new Uint8Array(buffer));
-        }
+
+        const reader = await Reader.fromResponse(response);
 
         await this.loadFromReader(reader, options);
     }
@@ -65,7 +69,7 @@ export class Pgs {
      * @param buffer The PGS data.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromBuffer(buffer: ArrayBuffer, options?: PgsLoadOptions): Promise<void> {
+    public async loadFromBuffer(buffer: ArrayBuffer, options?: SubtitleDecoderOptions): Promise<void> {
         await this.loadFromReader(new ArrayBinaryReader(new Uint8Array(buffer)), options);
     }
 
@@ -74,7 +78,7 @@ export class Pgs {
      * @param reader The PGS data reader.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromReader(reader: BinaryReader, options?: PgsLoadOptions): Promise<void> {
+    public async loadFromReader(reader: BinaryReader, options?: SubtitleDecoderOptions): Promise<void> {
         this.displaySets = [];
         this.updateTimestamps = [];
         this.cachedSubtitleData = undefined;
@@ -105,41 +109,11 @@ export class Pgs {
         }
     }
 
-    // Information about the next compiled subtitle data. This is calculated after the current subtitle is rendered.
-    // So by the time the next subtitle change is requested, this should already be completed.
-    private cachedSubtitleData?: { index: number, data: SubtitleData | undefined };
-
-
-    /**
-     * Pre-compiles and caches the subtitle data for the given index.
-     * This will speed up the next call to `buildSubtitleDataAtIndex` with the same index.
-     * @param index The index of the display set to cache.
-     */
-    public cacheSubtitleAtIndex(index: number) {
-        // Pre-calculating the next subtitle, so it is ready whenever the next subtitle change is requested.
-        const nextSubtitleData = this.getSubtitleAtIndex(index);
-        this.cachedSubtitleData = { index: index, data: nextSubtitleData };
-    }
-
-    /**
-     * Renders the subtitle at the given timestamp.
-     * @param time The timestamp in seconds.
-     */
-    public getSubtitleAtTimestamp(time: number): SubtitleData | undefined {
-        const index = PgsRendererHelper.getIndexFromTimestamps(time, this.updateTimestamps);
-        return this.getSubtitleAtIndex(index);
-    }
-
     /**
      * Pre-compiles the required subtitle data (windows and pixel data) for the frame at the given index.
      * @param index The index of the display set to render.
      */
-    public getSubtitleAtIndex(index: number): SubtitleData | undefined {
-        // Check if this index was already cached.
-        if (this.cachedSubtitleData && this.cachedSubtitleData.index === index) {
-            return this.cachedSubtitleData.data;
-        }
-
+    public buildSubtitleAtIndex(index: number): SubtitleFrame | undefined {
         if (index < 0 || index >= this.displaySets.length) {
             return;
         }
@@ -179,7 +153,7 @@ export class Pgs {
             .find(w => w.id === displaySet.presentationComposition?.paletteId);
         if (!palette) return;
 
-        const compositionData: SubtitleCompositionData[] = [];
+        const compositionData: SubtitleFrameElement[] = [];
         for (const compositionObject of displaySet.presentationComposition.compositionObjects) {
             // Find the window to draw on.
             let window = ctxWindows.find(w => w.id === compositionObject.windowId);
@@ -188,13 +162,17 @@ export class Pgs {
             // Builds the subtitle.
             const pixelData = this.getPixelDataFromComposition(compositionObject, palette, ctxObjects);
             if (pixelData) {
-                compositionData.push(new SubtitleCompositionData(compositionObject, window, pixelData));
+                compositionData.push(new SubtitleFrameElement(pixelData,
+                    compositionObject.horizontalPosition, compositionObject.verticalPosition,
+                    compositionObject.hasCropping,
+                    compositionObject.croppingHorizontalPosition, compositionObject.croppingVerticalPosition,
+                    compositionObject.croppingWidth, compositionObject.croppingHeight));
             }
         }
 
         if (compositionData.length === 0) return;
 
-        return new SubtitleData(displaySet.presentationComposition.width, displaySet.presentationComposition.height,
+        return new SubtitleFrame(displaySet.presentationComposition.width, displaySet.presentationComposition.height,
             compositionData);
     }
 

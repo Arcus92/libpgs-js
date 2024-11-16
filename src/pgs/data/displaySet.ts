@@ -1,10 +1,10 @@
-import {BigEndianBinaryReader} from "../utils/bigEndianBinaryReader";
+import {BigEndianBinaryReader} from "../../utils/bigEndianBinaryReader";
 import {PresentationCompositionSegment} from "./presentationCompositionSegment";
 import {PaletteDefinitionSegment} from "./paletteDefinitionSegment";
 import {ObjectDefinitionSegment} from "./objectDefinitionSegment";
 import {WindowDefinitionSegment} from "./windowDefinitionSegment";
 import {SegmentType} from "./segmentType";
-import {AsyncBinaryReader} from "../utils/asyncBinaryReader";
+import {AsyncBinaryReader} from "../../utils/asyncBinaryReader";
 
 /**
  * The PGS display set holds all data for the current subtitle update at a given timestamp.
