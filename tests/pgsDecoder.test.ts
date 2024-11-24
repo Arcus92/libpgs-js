@@ -7,19 +7,19 @@ beforeEach(() => {
 });
 
 test('load pgs from file and check timestamps', async () => {
-  const pgs = new PgsDecoder();
-  const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
-  await pgs.loadFromBuffer(dataSup);
+  const decoder = new PgsDecoder();
+  const buffer = fs.readFileSync(`${__dirname}/files/pgs/subtitle.sup`);
+  await decoder.loadFromBuffer(buffer);
 
-  expect(pgs.updateTimestamps).toEqual([90000, 180000, 270000, 360000]);
+  expect(decoder.updateTimestamps).toEqual([90000, 180000, 270000, 360000]);
 });
 
 test('load pgs from file and get first subtitle', async () => {
-  const pgs = new PgsDecoder();
-  const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
-  await pgs.loadFromBuffer(dataSup);
+  const decoder = new PgsDecoder();
+  const buffer = fs.readFileSync(`${__dirname}/files/pgs/subtitle.sup`);
+  await decoder.loadFromBuffer(buffer);
 
-  const subtitle = pgs.getSubtitleAtTimestamp(1.5);
+  const subtitle = decoder.getSubtitleAtTimestamp(1.5);
   expect(subtitle).toBeDefined();
 
   expect(subtitle!.width).toBe(128);
