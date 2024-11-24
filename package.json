@@ -43,5 +43,8 @@
     "tslib": "^2.6.3",
     "typescript": "^5.4.5",
     "whatwg-fetch": "^3.6.20"
+  },
+  "engines": {
+    "node": ">=20.0.0 <23.0.0"
   }
 }
