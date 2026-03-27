@@ -1,4 +1,4 @@
-import {BigEndianBinaryReader} from "../src/utils/bigEndianBinaryReader";
+import {BigEndianBinaryReader} from "../src/io/bigEndianBinaryReader";
 
 test('read uint 8 value', () => {
     const reader = new BigEndianBinaryReader(new Uint8Array([0x01]));

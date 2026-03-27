@@ -1,5 +1,6 @@
-import {BinaryReader} from "./binaryReader";
-import {ArrayBinaryReader} from "./arrayBinaryReader";
+import {ReadableBuffer} from "../io/readableBuffer";
+import {Readable} from "../io/readable";
+import {BigEndianBinaryReader} from "../io/bigEndianBinaryReader";
 
 /**
  * Handles run length encoded images.
@@ -12,23 +13,21 @@ export abstract class RunLengthEncoding {
      * @param target The pixel data is written to the output.
      * @return Returns the number of decoded pixels.
      */
-    static decode(reader: BinaryReader | Uint8Array,
+    static decode(reader: Readable | Uint8Array,
         source: number[] | Uint8Array | Uint8ClampedArray | Uint16Array | Uint32Array,
         target: number[] | Uint8Array | Uint8ClampedArray | Uint16Array | Uint32Array): number {
-        if (reader instanceof Uint8Array) {
-            reader = new ArrayBinaryReader(reader);
-        }
+        const binaryReader = new BigEndianBinaryReader(reader);
 
         let idx = 0;
-        while (reader.position < reader.length) {
-            const byte1 = reader.readByte();
+        while (binaryReader.position < reader.length) {
+            const byte1 = binaryReader.readUInt8();
             // Raw byte
             if (byte1 != 0x00) {
                 target[idx++] = source[byte1];
                 continue;
             }
 
-            const byte2 = reader.readByte();
+            const byte2 = binaryReader.readUInt8();
             // End of line
             if (byte2 == 0x00) {
                 continue;
@@ -38,9 +37,9 @@ export abstract class RunLengthEncoding {
             const bit7 = (byte2 & 0b01000000) != 0;
             let num = byte2 & 0b00111111;
             if (bit7) {
-                num = (num << 8) + reader.readByte();
+                num = (num << 8) + binaryReader.readUInt8();
             }
-            const value = bit8 ? reader.readByte() : 0x00;
+            const value = bit8 ? binaryReader.readUInt8() : 0x00;
             for (let i = 0; i < num; i++) {
                 target[idx++] = source[value];
             }

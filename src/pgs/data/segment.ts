@@ -1,4 +1,4 @@
-import {BigEndianBinaryReader} from "../../utils/bigEndianBinaryReader";
+import {BigEndianBinaryReader} from "../../io/bigEndianBinaryReader";
 
 export interface Segment {
     /**

@@ -1,12 +1,8 @@
-import {BigEndianBinaryReader} from "../utils/bigEndianBinaryReader";
 import {DisplaySet} from "./data/displaySet";
-import {BinaryReader} from "../utils/binaryReader";
-import {ArrayBinaryReader} from "../utils/arrayBinaryReader";
 import {SubtitleFrameElement, SubtitleFrame} from "../subtitleFrame";
 import {CompositionObject} from "./data/presentationCompositionSegment";
 import {PaletteDefinitionSegment} from "./data/paletteDefinitionSegment";
 import {ObjectDefinitionSegment} from "./data/objectDefinitionSegment";
-import {CombinedBinaryReader} from "../utils/combinedBinaryReader";
 import {RunLengthEncoding} from "../utils/runLengthEncoding";
 import {WindowDefinition} from "./data/windowDefinitionSegment";
 import {SubtitleDecoderOptions} from "../subtitleDecoderOptions";
@@ -16,6 +12,9 @@ import {SubtitleSource} from "../subtitleSource";
 import {PgsFromUrl} from "./pgsFromUrl";
 import {PgsFromBuffer} from "./pgsFromBuffer";
 import {Reader} from "../utils/reader";
+import {Readable} from "../io/readable";
+import {BigEndianBinaryReader} from "../io/bigEndianBinaryReader";
+import {ReadableBuffer} from "../io/readableBuffer";
 
 /**
  * The PGS subtitle decoder class. This can load and cache sup files from a buffer or url.
@@ -70,7 +69,7 @@ export class PgsDecoder extends SubtitleDecoder {
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
     public async loadFromBuffer(buffer: ArrayBuffer, options?: SubtitleDecoderOptions): Promise<void> {
-        await this.loadFromReader(new ArrayBinaryReader(new Uint8Array(buffer)), options);
+        await this.loadFromReader(new ReadableBuffer(new Uint8Array(buffer)), options);
     }
 
     /**
@@ -78,7 +77,7 @@ export class PgsDecoder extends SubtitleDecoder {
      * @param reader The PGS data reader.
      * @param options Optional loading options. Use `onProgress` as callback for partial update while loading.
      */
-    public async loadFromReader(reader: BinaryReader, options?: SubtitleDecoderOptions): Promise<void> {
+    public async loadFromReader(reader: Readable, options?: SubtitleDecoderOptions): Promise<void> {
         this.displaySets = [];
         this.updateTimestamps = [];
         this.cachedSubtitleData = undefined;
@@ -86,7 +85,7 @@ export class PgsDecoder extends SubtitleDecoder {
         let lastUpdateTime = performance.now();
 
         const bigEndianReader = new BigEndianBinaryReader(reader);
-        while (!reader.eof) {
+        while (!bigEndianReader.eof) {
             const displaySet = new DisplaySet();
             await displaySet.read(bigEndianReader, true);
             this.displaySets.push(displaySet);
@@ -184,6 +183,7 @@ export class PgsDecoder extends SubtitleDecoder {
         let width: number = 0;
         let height: number = 0;
         const dataChunks: Uint8Array[] = [];
+        let dataLength = 0;
         for (const ods of ctxObjects) {
             if (ods.id != composition.id) continue;
             if (ods.isFirstInSequence) {
@@ -193,15 +193,20 @@ export class PgsDecoder extends SubtitleDecoder {
 
             if (ods.data) {
                 dataChunks.push(ods.data);
+                dataLength += ods.data.length;
             }
         }
         if (dataChunks.length == 0) {
             return undefined;
         }
 
-        // Using a combined reader instead of stitching the data together.
-        // This hopefully avoids a larger memory allocation.
-        const data = new CombinedBinaryReader(dataChunks);
+        // Combine into a single buffer.
+        const data = new Uint8Array(dataLength);
+        let dataOffset = 0;
+        for (const dataChunk of dataChunks) {
+            data.set(dataChunk, dataOffset);
+            dataOffset += dataChunk.length;
+        }
 
         // Detect if we are running in a web-worker or in main browser
         if (typeof document !== 'undefined') {
