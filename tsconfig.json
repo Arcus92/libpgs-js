@@ -2,6 +2,7 @@
   "extends": "@tsconfig/recommended/tsconfig.json",
   "compilerOptions": {
     "target": "es5",
+    "lib": ["ES2015", "DOM"],
     "module": "esnext",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

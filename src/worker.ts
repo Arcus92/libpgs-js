@@ -17,6 +17,14 @@ const submitTimestamps = () => {
     })
 }
 
+// Inform the main process that the subtitle file was fully loaded, or failed to load.
+const submitLoaded = (error?: string) => {
+    postMessage({
+        op: 'loaded',
+        error: error
+    })
+}
+
 // Handles messages from the main thread.
 onmessage = (e: MessageEvent) => {
     switch (e.data.op) {
@@ -41,6 +49,9 @@ onmessage = (e: MessageEvent) => {
                 }
             }).then(() => {
                 submitTimestamps();
+                submitLoaded();
+            }).catch((e: unknown) => {
+                submitLoaded(`${e}`);
             });
             break;
         }
@@ -50,6 +61,9 @@ onmessage = (e: MessageEvent) => {
             const buffer: ArrayBuffer = e.data.buffer;
             pgs.loadFromBuffer(buffer).then(() => {
                 submitTimestamps();
+                submitLoaded();
+            }).catch((e: unknown) => {
+                submitLoaded(`${e}`);
             });
 
             break;

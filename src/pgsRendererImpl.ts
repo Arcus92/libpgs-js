@@ -61,13 +61,13 @@ export abstract class PgsRendererImpl {
      * Loads the subtitle file from the given url.
      * @param url The url to the PGS file.
      */
-    public abstract loadFromUrl(url: string): void;
+    public abstract loadFromUrl(url: string): Promise<void>;
 
     /**
      * Loads the subtitle file from the given buffer.
      * @param buffer The PGS data.
      */
-    public abstract loadFromBuffer(buffer: ArrayBuffer): void;
+    public abstract loadFromBuffer(buffer: ArrayBuffer): Promise<void>;
 
     /**
      * Disposes the renderer.
