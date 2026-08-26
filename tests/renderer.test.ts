@@ -20,7 +20,7 @@ test('load and render full pgs subtitle', async () => {
     const context = canvas.getContext("2d")!;
     const renderer = new Renderer(canvas);
     const pgs = new Pgs();
-    await pgs.loadFromBuffer(dataSup);
+    await pgs.loadFromBuffer(new Uint8Array(dataSup).buffer);
 
     // Helper function to render and compare the image in the test directory.
     // Since we only set pixel data and don't use font rendering this should be deterministic on every machine.
