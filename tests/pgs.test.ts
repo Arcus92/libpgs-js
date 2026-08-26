@@ -9,7 +9,7 @@ beforeEach(() => {
 test('load pgs from file and check timestamps', async () => {
   const pgs = new Pgs();
   const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
-  await pgs.loadFromBuffer(dataSup);
+  await pgs.loadFromBuffer(new Uint8Array(dataSup).buffer);
 
   expect(pgs.updateTimestamps).toEqual([90000, 180000, 270000, 360000]);
 });
@@ -17,7 +17,7 @@ test('load pgs from file and check timestamps', async () => {
 test('load pgs from file and get first subtitle', async () => {
   const pgs = new Pgs();
   const dataSup = fs.readFileSync(`${__dirname}/files/test.sup`);
-  await pgs.loadFromBuffer(dataSup);
+  await pgs.loadFromBuffer(new Uint8Array(dataSup).buffer);
 
   const subtitle = pgs.getSubtitleAtTimestamp(1.5);
   expect(subtitle).toBeDefined();
