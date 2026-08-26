@@ -47,7 +47,9 @@ export class PgsRenderer {
             this.aspectRatio = options.aspectRatio;
         }
         if (options.subUrl) {
-            this.loadFromUrl(options.subUrl);
+            // A failed load is reported through `ready`. It is handled here too,
+            // or callers that never await it would get an unhandled rejection.
+            this.loadFromUrl(options.subUrl).catch(() => {});
         }
 
         this.registerVideoEvents();
@@ -73,19 +75,26 @@ export class PgsRenderer {
     private implementation: PgsRendererImpl;
 
     /**
+     * Resolves once the last loaded subtitle file - `subUrl` included - can be rendered.
+     */
+    public ready: Promise<void> = Promise.resolve();
+
+    /**
      * Loads the subtitle file from the given url.
      * @param url The url to the PGS file.
      */
-    public loadFromUrl(url: string): void {
-        this.implementation.loadFromUrl(url);
+    public loadFromUrl(url: string): Promise<void> {
+        this.ready = this.implementation.loadFromUrl(url);
+        return this.ready;
     }
 
     /**
      * Loads the subtitle file from the given buffer.
      * @param buffer The PGS data.
      */
-    public loadFromBuffer(buffer: ArrayBuffer): void {
-        this.implementation.loadFromBuffer(buffer);
+    public loadFromBuffer(buffer: ArrayBuffer): Promise<void> {
+        this.ready = this.implementation.loadFromBuffer(buffer);
+        return this.ready;
     }
 
     /**

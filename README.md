@@ -66,6 +66,14 @@ const pgsRenderer = new libpgs.PgsRenderer({
 });
 ```
 
+### Awaiting the subtitle
+
+`ready` resolves once the subtitle file can be rendered, and every `loadFrom*` call returns that same promise:
+
+```javascript
+await pgsRenderer.ready;
+```
+
 ### Time offset
 
 You can also adjust time offset between video and subtitle:

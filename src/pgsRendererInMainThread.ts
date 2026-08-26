@@ -35,8 +35,8 @@ export class PgsRendererInMainThread extends PgsRendererImpl {
         this.pgs.cacheSubtitleAtIndex(index + 1);
     }
 
-    public loadFromUrl(url: string): void {
-        this.pgs.loadFromUrl(url, {
+    public loadFromUrl(url: string): Promise<void> {
+        return this.pgs.loadFromUrl(url, {
             onProgress: () => {
                 this.invokeTimestampsUpdate();
             }
@@ -45,8 +45,8 @@ export class PgsRendererInMainThread extends PgsRendererImpl {
         });
     }
 
-    public loadFromBuffer(buffer: ArrayBuffer): void {
-        this.pgs.loadFromBuffer(buffer).then(() => {
+    public loadFromBuffer(buffer: ArrayBuffer): Promise<void> {
+        return this.pgs.loadFromBuffer(buffer).then(() => {
             this.invokeTimestampsUpdate();
         });
     }
